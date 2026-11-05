@@ -540,3 +540,90 @@ async function nexusLoadConflicts(){
     </section>`;
   }catch(e){el.innerHTML='';}
 }
+
+
+/* NEXUS PRO · Parche 3.4: fotografías de celular optimizadas antes de enviarlas a D1.
+   No cambia las rutas, la base, los permisos ni los bienes ya registrados.
+   El servidor Cloudflare actual admite un máximo de 750 000 bytes por imagen. */
+(function(){
+  'use strict';
+  const MAX_ORIGINAL = 50 * 1024 * 1024;
+  const MAX_FINAL = 600 * 1024; // margen respecto a los 750 000 bytes permitidos en el Worker.
+  const SUPPORTED_DIRECT = new Set(['image/jpeg','image/png','image/webp','image/gif']);
+
+  async function preparePhotoForUpload(file){
+    if(!file || typeof file.size !== 'number') throw Error('Selecciona una fotografía válida.');
+    if(file.size > MAX_ORIGINAL) throw Error('La fotografía supera 50 MB. Selecciona una imagen más pequeña.');
+    if(file.size <= MAX_FINAL && SUPPORTED_DIRECT.has(file.type)) return file;
+    if(!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name||'')){
+      throw Error('Selecciona una imagen JPEG, PNG, WebP o una foto compatible del teléfono.');
+    }
+    if(typeof toast==='function')toast('Optimizando la fotografía para guardarla…');
+
+    let bitmap=null, img=null, srcURL=null, width=0, height=0;
+    try{
+      // createImageBitmap aplica la orientación EXIF en navegadores compatibles.
+      if(typeof createImageBitmap==='function'){
+        try{
+          bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
+          width=bitmap.width;height=bitmap.height;
+        }catch(_){ bitmap=null; }
+      }
+      if(!bitmap){
+        srcURL=URL.createObjectURL(file);
+        img=await new Promise((resolve,reject)=>{
+          const el=new Image();
+          el.onload=()=>resolve(el);
+          el.onerror=()=>reject(Error('El navegador no puede abrir esta foto. Configura la cámara para usar JPEG o convierte la imagen a JPG.'));
+          el.src=srcURL;
+        });
+        width=img.naturalWidth;height=img.naturalHeight;
+      }
+      if(!width||!height)throw Error('La fotografía no tiene dimensiones válidas.');
+
+      const canvas=document.createElement('canvas');
+      const ctx=canvas.getContext('2d',{alpha:false});
+      if(!ctx)throw Error('Este navegador no permite comprimir fotografías.');
+      for(const maxSide of [1600,1280,1000,800,640]){
+        const ratio=Math.min(1,maxSide/Math.max(width,height));
+        canvas.width=Math.max(1,Math.round(width*ratio));
+        canvas.height=Math.max(1,Math.round(height*ratio));
+        ctx.fillStyle='#ffffff';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(bitmap||img,0,0,canvas.width,canvas.height);
+        for(const quality of [0.84,0.72,0.60,0.48,0.36]){
+          const output=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));
+          if(!output)throw Error('No se pudo convertir la foto a JPEG en este dispositivo.');
+          if(output.size<=MAX_FINAL){
+            canvas.width=0;canvas.height=0;
+            return output;
+          }
+        }
+      }
+      throw Error('Esta fotografía no pudo reducirse lo suficiente. Intenta tomarla con una resolución menor.');
+    }finally{
+      if(bitmap && typeof bitmap.close==='function')bitmap.close();
+      if(srcURL)URL.revokeObjectURL(srcURL);
+    }
+  }
+
+  // Sustituye el cargador original (7 MB) sin alterar el resto de la interfaz.
+  window.uploadPhoto=async function(file,folder){
+    try{
+      const selected=await preparePhotoForUpload(file);
+      const b64=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve(String(reader.result).split(',')[1]);
+        reader.onerror=()=>reject(Error('No se pudo leer la foto optimizada.'));
+        reader.readAsDataURL(selected);
+      });
+      const response=await requestJSON('/api/photo',payload({data:b64,folder}));
+      return response.url;
+    }catch(error){
+      // Los formularios existentes ocultan parte del mensaje del servidor.
+      // Mostrarlo evita que los usuarios pierdan el motivo del fallo.
+      alert('No se pudo guardar la fotografía.\n\n'+(error?.message||'Inténtalo otra vez.'));
+      throw error;
+    }
+  };
+})();
