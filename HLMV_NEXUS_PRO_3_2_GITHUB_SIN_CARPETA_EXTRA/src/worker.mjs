@@ -24,7 +24,7 @@ const sha=async str=>hex(await crypto.subtle.digest('SHA-256',enc.encode(str)));
 const passhash=async (password,salt=null)=>{
   salt=salt||hex(crypto.getRandomValues(new Uint8Array(16)));
   const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);
-  return salt+':'+hex(await crypto.subtle.deriveBits({name:'PBKDF2',salt:Uint8Array.from(salt.match(/../g).map(x=>parseInt(x,16))),iterations:160000,hash:'SHA-256'},key,256));
+  return salt+':'+hex(await crypto.subtle.deriveBits({name:'PBKDF2',salt:Uint8Array.from(salt.match(/../g).map(x=>parseInt(x,16))),iterations:100000,hash:'SHA-256'},key,256));
 };
 const passok=async (password,hash)=>{try{const [salt,dig]=hash.split(':');const candidate=(await passhash(password,salt)).split(':')[1];if(candidate.length!==dig.length)return false;let diff=0;for(let i=0;i<dig.length;i++)diff|=dig.charCodeAt(i)^candidate.charCodeAt(i);return diff===0;}catch{return false;}};
 const checkPassword=p=>typeof p==='string'&&p.length>=12&&p.length<=128;
