@@ -1,0 +1,68 @@
+/* HLMV NEXUS PRO 3.0 — interfaz minimalista. Solo estilos; no modifica SQLite ni acciones. */
+:root[data-nexus-theme]{
+  --minimal-bg:#0e1112;--minimal-panel:#181d1e;--minimal-border:#303839;
+  --minimal-hover:#232a2a;--minimal-muted:#a4adaf;--minimal-title:#f2f5f5;
+  --minimal-line:#2e3737;--minimal-soft-accent:rgba(155,240,11,.065);
+}
+:root[data-nexus-theme="light"]{
+  --minimal-bg:#f6f8fa;--minimal-panel:#fff;--minimal-border:#dde4e8;
+  --minimal-hover:#f5f7f9;--minimal-muted:#6c7d86;--minimal-title:#24343e;
+  --minimal-line:#e6ecef;--minimal-soft-accent:rgba(95,152,22,.055);
+}
+:root[data-nexus-theme] body{background:var(--minimal-bg)!important}
+:root[data-nexus-theme] body::after{display:none!important}
+:root[data-nexus-theme] #shellSidebar{box-shadow:none!important}
+:root[data-nexus-theme] .sidebar-logo{border-radius:12px;box-shadow:none!important}
+:root[data-nexus-theme] .sidebar-signal{background:var(--minimal-panel);border:1px solid var(--minimal-border);color:var(--minimal-muted)}
+:root[data-nexus-theme] .sidebar-signal b{color:var(--minimal-title)}
+:root[data-nexus-theme] .signal-dot,:root[data-nexus-theme] .online-dot{box-shadow:none;width:7px;height:7px}
+:root[data-nexus-theme] .side-link{border-radius:9px;transition:background .15s,color .15s}
+:root[data-nexus-theme] .side-link.active{background:var(--minimal-soft-accent)!important;color:var(--minimal-title)!important;box-shadow:none!important;border-left:2px solid var(--nexus-accent);padding-left:11px}
+:root[data-nexus-theme] .side-link:hover{background:var(--minimal-hover)!important;transform:none}
+:root[data-nexus-theme] nav.pills .role-badge.owner{background:var(--minimal-panel);border-color:var(--minimal-border);color:var(--minimal-muted)}
+:root[data-nexus-theme] header.top{box-shadow:none!important}
+:root[data-nexus-theme] .top-command{box-shadow:none!important}
+:root[data-nexus-theme] .nexus-top-customize{background:var(--minimal-panel);color:var(--minimal-title);border-color:var(--minimal-border)}
+:root[data-nexus-theme] .inv-wrap{padding-top:32px}
+:root[data-nexus-theme] .pro-pagehead{align-items:center;gap:16px;margin:0 0 25px}
+:root[data-nexus-theme] .pro-kicker{font-size:10px;letter-spacing:.09em;font-weight:700;color:var(--minimal-muted)!important;margin:0 0 8px}
+:root[data-nexus-theme] .pro-pagehead h1{font-size:clamp(24px,2.6vw,32px);letter-spacing:-.035em;margin-bottom:6px}
+:root[data-nexus-theme] .pro-subtitle{font-size:12px;color:var(--minimal-muted)}
+:root[data-nexus-theme] .pro-pageactions{gap:7px}
+:root[data-nexus-theme] .btn{box-shadow:none!important;transform:none!important;border-radius:9px;font-weight:700}
+:root[data-nexus-theme] .btn:hover{box-shadow:none!important;transform:none!important}
+:root[data-nexus-theme] .pro-stat-grid{gap:12px;margin:0 0 20px}
+:root[data-nexus-theme] .pro-stat{background:var(--minimal-panel)!important;border:1px solid var(--minimal-border)!important;box-shadow:none!important;border-radius:13px;min-height:138px;padding:20px 19px;gap:11px}
+:root[data-nexus-theme] .pro-stat::after{content:none!important}
+:root[data-nexus-theme] .pro-stat-top{font-size:12px;color:var(--minimal-muted)}
+:root[data-nexus-theme] .pro-stat-value{font-size:31px;color:var(--minimal-title)}
+:root[data-nexus-theme] .pro-stat-note{font-size:11px;color:var(--minimal-muted)}
+:root[data-nexus-theme] .pro-stat-icon{width:30px;height:30px;background:var(--minimal-hover)!important;color:var(--minimal-muted)!important;font-size:16px}
+:root[data-nexus-theme] .pro-panel{border-radius:13px;box-shadow:none;background:var(--minimal-panel)!important;border:1px solid var(--minimal-border)!important;padding:22px}
+:root[data-nexus-theme] .pro-panel-header h3{color:var(--minimal-title);font-size:15px}
+:root[data-nexus-theme] .pro-panel-header p{color:var(--minimal-muted)}
+:root[data-nexus-theme] .pro-link{color:var(--minimal-muted)!important;text-decoration:underline;text-decoration-color:var(--minimal-line);text-underline-offset:3px}
+:root[data-nexus-theme] .pro-link:hover{color:var(--minimal-title)!important}
+:root[data-nexus-theme] .pro-quick-grid{gap:8px}
+:root[data-nexus-theme] .pro-quick{min-height:76px;gap:6px;padding:13px 14px;background:var(--minimal-panel)!important;border:1px solid var(--minimal-border)!important;border-radius:10px;box-shadow:none!important;color:var(--minimal-title);font-size:12px;font-weight:650}
+:root[data-nexus-theme] .pro-quick:hover{background:var(--minimal-hover)!important;border-color:var(--nexus-accent)!important;transform:none!important}
+:root[data-nexus-theme] .pro-quick span{font-size:16px;color:var(--minimal-muted)}
+:root[data-nexus-theme] .pro-section-head{margin:26px 0 12px}
+:root[data-nexus-theme] .pro-section-head h2{font-size:16px;letter-spacing:-.02em}
+:root[data-nexus-theme] .pro-section-head p{color:var(--minimal-muted)}
+:root[data-nexus-theme] .pro-type-preview{background:var(--minimal-panel)!important;border:1px solid var(--minimal-border)!important;color:var(--minimal-title);box-shadow:none!important;min-height:54px}
+:root[data-nexus-theme] .pro-type-preview:hover{background:var(--minimal-hover)!important;border-color:var(--nexus-accent)!important}
+:root[data-nexus-theme] .pro-type-preview span{color:var(--minimal-muted)!important}
+:root[data-nexus-theme] .pro-empty{border:1px dashed var(--minimal-border);background:transparent;color:var(--minimal-muted);padding:21px;border-radius:11px}
+:root[data-nexus-theme] .area-card,:root[data-nexus-theme] .pro-object-card{box-shadow:none!important}
+:root[data-nexus-theme] .area-card:hover,:root[data-nexus-theme] .pro-object-card:hover{transform:none;box-shadow:none!important}
+:root[data-nexus-theme] .nexus-review-bar{background:var(--minimal-panel);border-color:var(--minimal-border)}
+:root[data-nexus-theme] .nexus-upload-zone{box-shadow:none}
+@media(max-width:800px){:root[data-nexus-theme] .pro-pagehead{align-items:flex-start}:root[data-nexus-theme] .pro-stat{min-height:112px;padding:15px}:root[data-nexus-theme] .pro-quick{min-height:67px}}
+@media(max-width:650px){:root[data-nexus-theme] .inv-wrap{padding-top:21px}:root[data-nexus-theme] .pro-pageactions .btn{flex:1 1 43%;font-size:11px}:root[data-nexus-theme] .pro-stat-value{font-size:26px}:root[data-nexus-theme] .pro-panel{padding:16px}}
+
+/* Controles de perfiles: un elemento hidden nunca se muestra. */
+[hidden], .side-link[hidden], .nexus-write-only[hidden] {display:none!important;}
+
+/* Controles de perfiles: un elemento hidden nunca se muestra. */
+[hidden], .side-link[hidden], .nexus-write-only[hidden] {display:none!important;}

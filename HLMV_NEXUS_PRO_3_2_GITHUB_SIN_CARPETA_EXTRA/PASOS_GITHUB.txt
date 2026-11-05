@@ -1,0 +1,12 @@
+HLMV NEXUS PRO 3.2 - CÓDIGO LISTO PARA GITHUB
+
+1. Extraer este ZIP. Crear un repositorio PRIVADO en https://github.com/new
+2. Subir TODOS los archivos y carpetas, manteniendo index.html en la raíz.
+3. No incluir datos/, .env, archivos de inventarios ni respaldos.
+4. GitHub Pages no ejecuta Python, SQLite ni cuentas. Necesitas servidor central.
+5. Para probar en PC: copiar .env.ejemplo a .env; ejecutar INICIAR_SERVIDOR_WINDOWS.bat.
+6. Abrir http://127.0.0.1:8895/index.html y crear administrador.
+7. En Usuarios y permisos, crear Inspectores de Bienes Nacionales y Consulta.
+8. Para publicar, consultar README.md y configurar dominio HTTPS fijo + Cloudflare Access.
+9. Configurar HLMV_PUBLIC_URL con la URL real para QR permanentes.
+10. Antes de usar datos reales, validar la seguridad con Informática.

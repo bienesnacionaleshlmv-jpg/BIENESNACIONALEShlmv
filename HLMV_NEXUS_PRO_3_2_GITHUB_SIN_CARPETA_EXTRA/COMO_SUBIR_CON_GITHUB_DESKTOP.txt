@@ -1,0 +1,23 @@
+HLMV NEXUS PRO 3.2 — SUBIR A GITHUB SIN ERRORES
+
+NO subas el archivo ZIP directamente a GitHub. Descomprimelo primero.
+
+OPCION RECOMENDADA: GITHUB DESKTOP (para un repositorio que ya existe)
+1. Instala GitHub Desktop: https://desktop.github.com/
+2. Inicia sesion con la misma cuenta GitHub donde creaste el repositorio.
+3. Ve a File > Clone repository.
+4. En GitHub.com selecciona tu repositorio y pulsa Clone.
+5. En GitHub Desktop pulsa Repository > Show in Explorer.
+6. Abre esta carpeta extraida y COPIA SU CONTENIDO (index.html, app, vendor,
+   herramientas, Dockerfile, README.md, etc.) a la carpeta clonada.
+   No copies la carpeta contenedora: index.html debe quedar en la raiz.
+7. Vuelve a GitHub Desktop: revisa cambios, escribe el mensaje
+   'Cargar NEXUS PRO 3.2', haz click en Commit to main y luego Push origin.
+8. En GitHub verifica que index.html este junto a README.md.
+
+IMPORTANTE: no subas .env, datos/, archivos SQLite, PDF, Excel, contrasenas o
+respaldos. .env.ejemplo se puede subir; no contiene contrasenas reales.
+
+NOTA: GitHub aloja el codigo, pero NO ejecuta el servidor Python y SQLite.
+Para compartir datos y abrir QR reales necesitas iniciar el servidor en tu PC
+y publicarlo con HTTPS mediante Cloudflare Tunnel + Access.
