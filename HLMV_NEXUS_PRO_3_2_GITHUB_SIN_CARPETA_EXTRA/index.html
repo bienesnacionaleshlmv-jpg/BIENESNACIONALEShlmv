@@ -1362,7 +1362,7 @@ async function renderBienFicha(app, numero){
   if(!bien){ app.innerHTML = `<div class="wrap inv-wrap"><div class="empty">No se encontró ningún bien con el número de inventario <b>${esc(numero)}</b>.</div></div>`; return; }
   const area = await fetchArea(bien.areaId);
   const empleados = area ? await fetchEmpleados(area.id) : [];
-  const qrUrl = (SESSION_STATUS.publicUrl || location.origin) + '/index.html#/bien/' + encodeURIComponent(bien.numeroInventario);
+  // Los nuevos QR apuntan a una ficha publica tokenizada; no a la ficha interna con login.
   app.innerHTML = `<div class="wrap inv-wrap">
     <div class="breadcrumb">${area?`<a href="#/">Portal</a> / <a href="#/inventario">Bienes Nacionales</a> / <a href="#/area/${area.id}">${esc(area.nombre)}</a> / `:''}Ficha de bien</div>
     <div class="card">
@@ -1372,6 +1372,7 @@ async function renderBienFicha(app, numero){
           <div id="qrHolder" class="qr-box" style="margin-top:14px;">
             <div id="qrCanvas"></div>
             <div style="font-size:.76rem;color:var(--muted);margin-top:6px;">${esc(bien.numeroInventario)}</div>
+            <div id="publicQrLink" style="font-size:.78rem;color:var(--muted);margin-top:8px;">Preparando enlace de consulta pública…</div>
           </div>
           <button class="btn secondary small" style="margin-top:10px;width:100%;" onclick="imprimirEtiqueta('${esc(bien.numeroInventario)}','${esc(bien.descripcion)}')">Imprimir etiqueta QR</button>
         </div>
@@ -1408,15 +1409,16 @@ async function renderBienFicha(app, numero){
       </div>
     </div>
   </div>`;
-  // El servidor genera SIEMPRE la etiqueta con HLMV_PUBLIC_URL cuando está definido.
+  // El servidor genera el QR con una ficha de solo lectura que no pide iniciar sesión.
   const qrSrc = '/api/qr?'+new URLSearchParams({numero:bien.numeroInventario});
-  document.getElementById('qrCanvas').innerHTML = '<img width="150" height="150" alt="Código QR del bien" src="'+qrSrc+'">';
-  if (SESSION_STATUS.publicUrl) {
-    document.getElementById('qrCanvas').insertAdjacentHTML('afterend',
-      '<p style="font-size:.72rem;margin-top:7px;max-width:240px;overflow-wrap:anywhere;">QR fijo: '+esc(SESSION_STATUS.publicUrl)+'/index.html</p>');
-  } else {
-    document.getElementById('qrCanvas').insertAdjacentHTML('afterend',
-      '<p style="font-size:.72rem;margin-top:7px;max-width:220px;">QR de prueba local. Configura la dirección pública antes de imprimir etiquetas permanentes.</p>');
+  document.getElementById('qrCanvas').innerHTML = '<img width="150" height="150" alt="QR de consulta pública del bien" src="'+qrSrc+'">';
+  try {
+    const publicLink = await requestJSON('/api/public/link?'+new URLSearchParams({numero:bien.numeroInventario}));
+    const help=document.getElementById('publicQrLink');
+    if(help)help.innerHTML='<a target="_blank" rel="noopener noreferrer" href="'+esc(publicLink.url)+'" style="color:var(--accent);text-decoration:underline">Abrir ficha pública sin iniciar sesión ↗</a><div style="margin-top:5px">QR de solo lectura. Muestra el nombre del responsable, pero no la identidad ni los costos.</div>';
+  } catch (e) {
+    const help=document.getElementById('publicQrLink');
+    if(help)help.textContent='No se pudo crear el enlace público: '+e.message;
   }
   window.__currentBien = bien; window.__currentArea = area;
 }
