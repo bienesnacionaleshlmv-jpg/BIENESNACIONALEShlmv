@@ -42,6 +42,7 @@ async function initialize(db){
  CREATE UNIQUE INDEX IF NOT EXISTS bienes_num_unico ON docs(upper(json_extract(data,'$.numeroInventario'))) WHERE collection='bienes';
  CREATE TABLE IF NOT EXISTS audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,date TEXT NOT NULL,action TEXT NOT NULL,collection TEXT,document_id TEXT,details TEXT);
  CREATE TABLE IF NOT EXISTS images(name TEXT PRIMARY KEY,data TEXT NOT NULL,mime TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS public_qr(asset_id TEXT NOT NULL PRIMARY KEY,token TEXT NOT NULL UNIQUE,created TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS login_limits(username TEXT PRIMARY KEY,count INTEGER NOT NULL,first_time INTEGER NOT NULL);`);
  prepared=true;
 }
@@ -244,11 +245,79 @@ async function importExcel(req,db,user,preview){
  await record(db,'import_excel','bienes','',`${imported} nuevos / ${dup} duplicados`);
  return {ok:true,importados:imported,insertados:imported,nuevos:imported,areasCreadas:areaIds.size-originalAreas,responsablesCreados:0,jefaturasPorVerificar:0,duplicados:dup,total:parsed.bienes.length};
 }
+// QR publicos: URL aleatoria de 128 bits. No se permite consultar el inventario completo sin sesion.
+const publicQrPath=(token)=>'/api/public/ficha/'+token;
+async function publicQrLink(db,numero,originUrl){
+ const asset=await sql(db,`SELECT id FROM docs WHERE collection='bienes' AND upper(json_extract(data,'$.numeroInventario'))=upper(?) LIMIT 1`,numero);
+ if(!asset)fail('Bien no registrado.',404);
+ await run(db,'INSERT OR IGNORE INTO public_qr(asset_id,token,created) VALUES(?,?,?)',asset.id,numId(),now());
+ const row=await sql(db,'SELECT token FROM public_qr WHERE asset_id=?',asset.id);
+ if(!row?.token)fail('No se pudo crear el enlace QR.',500);
+ return originUrl+publicQrPath(row.token);
+}
+function publicHtmlEscape(value){return fmt(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// Los enlaces publicos revelan expresamente el nombre del responsable para el bien
+// cuyo QR se ha escaneado. Identidad, telefono, correo, costo e historial NO se exponen.
+async function responsibleForPublicAsset(db,b){
+ const areaId=fmt(b.areaId),personaId=fmt(b.personaId);
+ if(b.personaTipo==='jefe'){
+  const area=areaId?await getDoc(db,'areas',areaId):null;
+  return {nombre:fmt(area?.jefeNombre)||'Sin responsable asignado',cargo:fmt(area?.jefeNombre)?'Jefatura de área':''};
+ }
+ if(b.personaTipo==='empleado'){
+  const emp=personaId?await getDoc(db,'empleados',personaId):null;
+  if(emp&&fmt(emp.areaId)===areaId&&fmt(emp.nombre))return {nombre:fmt(emp.nombre),cargo:'Personal asignado'};
+ }
+ return {nombre:'Sin responsable asignado',cargo:''};
+}
+function publicFichaHTML(b,responsible,token){
+ // Lista blanca de CAMPOS publicos: datos del objeto y NOMBRE del encargado.
+ // No mostrar números de identidad, contacto, costos, documentos ni historial.
+ const fields=[
+  ['Número de inventario',b.numeroInventario],
+  ['Descripción',b.descripcion],
+  ['Marca',b.marca],['Modelo',b.modelo],['Serie',b.numeroSerie],['Color',b.color],
+  ['Responsable del bien',responsible.nombre],
+  ...(responsible.cargo?[['Tipo de asignación',responsible.cargo]]:[]),
+  ['Estado físico',b.estadoBueno===true?'Registrado como bueno':'Pendiente de verificación física']
+ ];
+ const photo=/^\/imagenes\/[a-f0-9]{32}\.(?:png|jpg|webp|gif)$/.test(fmt(b.fotoURL));
+ const rows=fields.filter(([,v])=>v!==undefined&&v!==null&&v!=='').map(([k,v])=>'<div class="pair"><dt>'+publicHtmlEscape(k)+'</dt><dd>'+publicHtmlEscape(v)+'</dd></div>').join('');
+ return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Ficha pública - ${publicHtmlEscape(b.numeroInventario)}</title><style>
+ :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d1310;color:#f1f8f3;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}header{border-bottom:1px solid #2d3b32;padding:17px 20px;color:#d4e2d7;font-size:14px}.wrap{max-width:780px;margin:36px auto;padding:0 16px}.card{background:#18221c;border:1px solid #334237;border-radius:18px;overflow:hidden;padding:25px}small{color:#b4c9b7}.eyebrow{color:#a3ed1b;text-transform:uppercase;letter-spacing:.1em;font-weight:700;font-size:12px}h1{font-size:clamp(23px,5vw,34px);line-height:1.15;margin:10px 0 18px}.photo{display:block;max-height:350px;max-width:100%;object-fit:contain;border-radius:12px;margin:0 auto 20px}.pair{display:grid;grid-template-columns:minmax(135px,1fr) minmax(0,2fr);gap:12px;padding:13px 0;border-top:1px solid #344138}dt{color:#b7c8bb}dd{margin:0;overflow-wrap:anywhere;font-weight:600}.note{margin:18px 0 0;color:#a9b9ad;font-size:13px}.mark{color:#9bf00b;font-weight:900;margin-right:9px}@media(max-width:480px){.wrap{margin:18px auto}.card{padding:18px}.pair{grid-template-columns:1fr;gap:2px}}
+ </style></head><body><header><span class="mark">▣</span> Hospital Leonardo Martínez Valenzuela · Bienes Nacionales</header><main class="wrap"><article class="card"><div class="eyebrow">Consulta de inventario · Solo lectura</div><h1>${publicHtmlEscape(b.descripcion||'Bien inventariado')}</h1>${photo?`<img class="photo" src="/api/public/foto/${token}" alt="Fotografía del bien" loading="lazy">`:''}<dl>${rows}</dl><p class="note">Esta ficha pública muestra el nombre del responsable asignado actualmente. No da acceso a editar el inventario ni muestra identidad, teléfono, correo, valores de adquisición o historial. Los nombres están visibles para cualquier persona que tenga el QR.</p></article></main></body></html>`;
+}
+async function publicFicha(req,db,token){
+ if(req.method!=='GET'&&req.method!=='HEAD')fail('Método no permitido.',405);
+ if(!/^[a-f0-9]{32}$/.test(token))fail('Ficha no encontrada.',404);
+ const row=await sql(db,`SELECT d.data FROM public_qr p JOIN docs d ON d.collection='bienes' AND d.id=p.asset_id WHERE p.token=? LIMIT 1`,token);
+ if(!row)fail('Ficha no encontrada.',404);
+ const bien=JSON.parse(row.data);
+ const responsible=await responsibleForPublicAsset(db,bien);
+ const body=publicFichaHTML(bien,responsible,token);
+ return new Response(req.method==='HEAD'?null:body,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}});
+}
+async function publicFichaPhoto(req,db,token){
+ if(req.method!=='GET'&&req.method!=='HEAD')fail('Método no permitido.',405);
+ if(!/^[a-f0-9]{32}$/.test(token))fail('Fotografía no encontrada.',404);
+ const row=await sql(db,`SELECT d.data FROM public_qr p JOIN docs d ON d.collection='bienes' AND d.id=p.asset_id WHERE p.token=? LIMIT 1`,token);
+ if(!row)fail('Fotografía no encontrada.',404);
+ const b=JSON.parse(row.data),foto=fmt(b.fotoURL);
+ if(!/^\/imagenes\/[a-f0-9]{32}\.(?:png|jpg|webp|gif)$/.test(foto))fail('Fotografía no encontrada.',404);
+ const img=await sql(db,'SELECT data,mime FROM images WHERE name=?',foto.slice('/imagenes/'.length));
+ if(!img)fail('Fotografía no encontrada.',404);
+ if(!['image/jpeg','image/png','image/webp','image/gif'].includes(img.mime))fail('Fotografía no encontrada.',404);
+ const raw=Uint8Array.from(atob(img.data),c=>c.charCodeAt(0));
+ return new Response(req.method==='HEAD'?null:raw,{status:200,headers:{'content-type':img.mime,'cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer'}});
+}
 async function route(req,env){
  const url=new URL(req.url),path=url.pathname,method=req.method,db=env.DB;
  if(!db)fail('Falta vincular la base D1 con nombre DB en Cloudflare.',503);
  await initialize(db);origin(req);
  if(path==='/api/health')return json({ok:true,db:'d1'});
+ // La ficha publica se resuelve ANTES de comprobar una sesion. No expone /api/doc ni /api/list.
+ if(path.startsWith('/api/public/ficha/'))return publicFicha(req,db,path.slice('/api/public/ficha/'.length));
+ if(path.startsWith('/api/public/foto/'))return publicFichaPhoto(req,db,path.slice('/api/public/foto/'.length));
  const ready=await bootAdmin(env);if(!ready)fail('Falta configurar los secretos HLMV_ADMIN_USER y HLMV_ADMIN_PASSWORD en Cloudflare.',503);
  const user=await currentUser(req,db);
  if(path==='/api/status'&&method==='GET')return json({initialized:true,authenticated:!!user,user,version:'3.3-cloudflare',central:true,lan:false,publicUrl:url.origin});
@@ -273,9 +342,13 @@ async function route(req,env){
   const st=now(),rv=b.revisado?1:0;for(let i=0;i<ids.length;i+=90){const ch=ids.slice(i,i+90);await run(db,`UPDATE docs SET data=json_set(data,'$.revisado',json(?),'$.revisionFecha',?,'$.revisionOrigen',?),updated=? WHERE collection='bienes' AND id IN (${ch.map(()=>'?').join(',')})`,rv?'true':'false',rv?st:'',rv?'Revisión manual':'',st,...ch);}
   await record(db,'revision_masiva','bienes','',String(ids.length));return json({ok:true,actualizados:ids.length});
  }
+ if(path==='/api/public/link'&&method==='GET'){
+  const numero=fmt(url.searchParams.get('numero'));if(!numero)fail('Falta numero de inventario.');
+  return json({url:await publicQrLink(db,numero,url.origin)});
+ }
  if(path==='/api/qr'&&method==='GET'){
-  const number=fmt(url.searchParams.get('numero'));if(!number)fail('Falta número de inventario.');const b=await sql(db,`SELECT id FROM docs WHERE collection='bienes' AND upper(json_extract(data,'$.numeroInventario'))=upper(?)`,number);if(!b)fail('Bien no registrado.',404);
-  const addr=url.origin+'/index.html#/bien/'+encodeURIComponent(number);const qr=qrcode(0,'M');qr.addData(addr);qr.make();return binary(qr.createSvgTag({cellSize:5,margin:3}), 'image/svg+xml');
+  const numero=fmt(url.searchParams.get('numero'));if(!numero)fail('Falta numero de inventario.');
+  const addr=await publicQrLink(db,numero,url.origin);const qr=qrcode(0,'M');qr.addData(addr);qr.make();return binary(qr.createSvgTag({cellSize:5,margin:3}),'image/svg+xml');
  }
  if(path.startsWith('/imagenes/')&&method==='GET'){const name=path.slice(10);if(!/^[a-f0-9]{32}\.(png|jpg|webp|gif)$/.test(name))fail('Imagen no encontrada.',404);const x=await sql(db,'SELECT data,mime FROM images WHERE name=?',name);if(!x)fail('Imagen no encontrada.',404);const raw=Uint8Array.from(atob(x.data),c=>c.charCodeAt(0));return binary(raw,x.mime);}
  if(path==='/api/photo'&&method==='POST'){
