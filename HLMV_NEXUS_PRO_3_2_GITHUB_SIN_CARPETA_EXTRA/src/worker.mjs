@@ -86,7 +86,7 @@ async function cleanDoc(db,col,d,id){
   if(d.personaTipo==='jefe')d.personaId=d.areaId;
   else if(d.personaTipo==='empleado'){const emp=await getDoc(db,'empleados',fmt(d.personaId));if(!emp||emp.areaId!==d.areaId)fail('Responsable no pertenece al área.');}
   else {d.personaTipo=null;d.personaId=null;}
-  d.estadoBueno=!!d.estadoBueno;d.revisado=!!d.revisado;
+  d.estadoBueno=!!d.estadoBueno;if(d.descargado)d.estadoBueno=false;d.revisado=!!d.revisado;
  }
  for(const k of ['fotoURL','heroURL'])if(d[k]&& !/^\/imagenes\/[a-f0-9]{32}\.(png|jpg|webp|gif)$/.test(String(d[k])))fail('Imagen no permitida.');
  return d;
@@ -104,10 +104,17 @@ async function writeDoc(req,db,user,method){
    if(bienes.length){const st=now();const cmds=bienes.map(b=>{const data={...b,personaTipo:'jefe',personaId:b.areaId};delete data.id;return db.prepare('UPDATE docs SET data=?,updated=? WHERE collection=? AND id=?').bind(JSON.stringify(data),st,'bienes',b.id);});
     for(let i=0;i<cmds.length;i+=25)await db.batch(cmds.slice(i,i+25));reasignados=bienes.length;}
   }
-  await run(db,'DELETE FROM docs WHERE collection=? AND id=?',col,id);await record(db,'eliminar',col,id,`${reasignados} reasignados`);return {ok:true,reasignados};
+  if(col==='bienes')await run(db,'DELETE FROM public_qr WHERE asset_id=?',id);
+  await run(db,'DELETE FROM docs WHERE collection=? AND id=?',col,id);await record(db,'eliminar',col,id,col==='bienes'?fmt(original.numeroInventario):`${reasignados} reasignados`);return {ok:true,reasignados};
  }
  const old=method==='PUT'?await getDoc(db,col,id):null;if(method==='PUT'&&!old)fail('Registro no encontrado.',404);
- const data=await cleanDoc(db,col,validateData({...old,...(b.data||{})}),id);
+ const incoming={...old,...(b.data||{})};
+ if(col==='bienes'){
+   if(old?.descargado&&user.role!=='administrador')fail('Un bien descargado solo puede modificarse por administración.',403);
+   const exclusive=['descargado','fechaDescargo','motivoDescargo','referenciaDescargo','descargadoPor','fechaReactivacion','motivoReactivacion','historialDescargos'];
+   for(const key of exclusive){if(old&&Object.prototype.hasOwnProperty.call(old,key))incoming[key]=old[key];else delete incoming[key];}
+ }
+ const data=await cleanDoc(db,col,validateData(incoming),id);
  const dest=method==='POST'?((col==='hospital'&&id==='info')?'info':numId()):id;
  try{if(method==='POST')await run(db,'INSERT INTO docs(collection,id,data,updated) VALUES(?,?,?,?)',col,dest,JSON.stringify(data),now());
  else await run(db,'UPDATE docs SET data=?,updated=? WHERE collection=? AND id=?',JSON.stringify(data),now(),col,dest);
@@ -149,24 +156,50 @@ async function login(req,db){const b=await pjson(req),username=fmt(b.username).t
  return json({ok:true,user:{id:u.id,username:u.username,name:u.name,role:u.role} },200,{'set-cookie':sessionCookie(t)});
 }
 function binary(content,mime,file){return new Response(content,{headers:{'content-type':mime,'content-disposition':file?`attachment; filename="${file}"`:'inline','cache-control':'no-store','x-content-type-options':'nosniff'}});}
-const xmlesc=v=>fmt(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-async function report(db,areaId){const areas=Object.fromEntries((await listDocs(db,'areas')).map(a=>[a.id,a]));const empl=Object.fromEntries((await listDocs(db,'empleados')).map(x=>[x.id,x]));let bienes=await listDocs(db,'bienes');if(areaId)bienes=bienes.filter(b=>b.areaId===areaId);bienes.sort((a,b)=>fmt(a.numeroInventario).localeCompare(fmt(b.numeroInventario),'es'));
- const headers=['Inventario','Descripción','Serie','Color','Estado','Área','Responsable','Valor L','Fecha adquisición','Marca','Modelo','Ficha','Revisión'];const rows=bienes.map(b=>[b.numeroInventario,b.descripcion,b.numeroSerie,b.color,b.estadoBueno?'Bueno':'Por verificar',areas[b.areaId]?.nombre||'',b.personaTipo==='jefe'?areas[b.areaId]?.jefeNombre:b.personaTipo==='empleado'?empl[b.personaId]?.nombre:'',b.precio,b.fechaAdquisicion,b.marca,b.modelo,b.numeroFicha,b.revisado?'Revisado':'Pendiente'].map(fmt));return {headers,rows};}
+const xmlesc=v=>fmt(v).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g,'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&apos;');
+async function report(db,areaId){
+ const areas=Object.fromEntries((await listDocs(db,'areas')).map(a=>[a.id,a]));
+ const empl=Object.fromEntries((await listDocs(db,'empleados')).map(x=>[x.id,x]));
+ let bienes=await listDocs(db,'bienes');
+ if(areaId)bienes=bienes.filter(b=>b.areaId===areaId);
+ bienes.sort((a,b)=>fmt(a.numeroInventario).localeCompare(fmt(b.numeroInventario),'es',{numeric:true}));
+ if(bienes.length>5000)fail('Este reporte supera los 5000 bienes. Exporta por área para no exceder el límite gratuito del servidor.',413);
+ const headers=['N.º inventario','Descripción','N.º serie','Color','Estado físico','Área','Responsable','Valor de adquisición (L)','Fecha adquisición','Marca','Modelo','N.º ficha','Situación','Fecha de descargo','Motivo del descargo','Referencia de descargo'];
+ const rows=bienes.map(b=>[b.numeroInventario,b.descripcion,b.numeroSerie,b.color,b.descargado?'Fuera de servicio':b.estadoBueno?'Funciona':'Sin confirmar',areas[b.areaId]?.nombre||'',b.personaTipo==='jefe'?areas[b.areaId]?.jefeNombre:b.personaTipo==='empleado'?empl[b.personaId]?.nombre:'',b.precio,b.fechaAdquisicion,b.marca,b.modelo,b.numeroFicha,b.descargado?'Descargado':'Activo',b.fechaDescargo||'',b.motivoDescargo||'',b.referenciaDescargo||''].map(fmt));
+ return {headers,rows,area:areaId?(areas[areaId]?.nombre||'Área seleccionada'):'Todo el hospital'};
+}
+// Ambos formatos se generan directamente en Cloudflare Workers como archivos Office Open XML.
+// No requiere Microsoft Office instalado ni enviar el inventario a un servicio externo.
 function exportOffice(r,format){
  const Z={};
  if(format==='xlsx'){
-  const sheet=[r.headers,...r.rows].map((x,i)=>`<row r="${i+1}">${x.map((v,j)=>`<c r="${String.fromCharCode(65+j)}${i+1}" t="inlineStr"><is><t>${xmlesc(v)}</t></is></c>`).join('')}</row>`).join('');
-  Z['[Content_Types].xml']=`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`;
-  Z['_rels/.rels']=`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/office/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
-  Z['xl/workbook.xml']=`<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inventario HLMV" sheetId="1" r:id="rId1"/></sheets></workbook>`;
-  Z['xl/_rels/workbook.xml.rels']=`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/office/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
-  Z['xl/worksheets/sheet1.xml']=`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheet}</sheetData></worksheet>`;
+  const cref=(n)=>{let v=n+1,x='';while(v){v--;x=String.fromCharCode(65+v%26)+x;v=Math.floor(v/26);}return x;};
+  const cell=(v,i,j)=>{
+   const address=cref(j)+(i+1);
+   if(i>0&&j===7&&fmt(v)!==''&&Number.isFinite(Number(v)))return `<c r="${address}" s="2"><v>${Number(v)}</v></c>`;
+   const text=xmlesc(v);
+   return `<c r="${address}" t="inlineStr"${i===0?' s="1"':''}><is><t xml:space="preserve">${text}</t></is></c>`;
+  };
+  const cells=[r.headers,...r.rows].map((x,i)=>`<row r="${i+1}"${i===0?' ht="30" customHeight="1"':''}>${x.map((v,j)=>cell(v,i,j)).join('')}</row>`).join('');
+  const widths=[18,42,22,16,19,27,27,22,20,22,22,18,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+  const last=r.rows.length+1;
+  Z['[Content_Types].xml']=`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+  Z['_rels/.rels']=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  Z['xl/workbook.xml']=`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inventario HLMV" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  Z['xl/_rels/workbook.xml.rels']=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  Z['xl/styles.xml']=`<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="10"/><name val="Calibri"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF21422B"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`;
+  Z['xl/worksheets/sheet1.xml']=`<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths}</cols><sheetData>${cells}</sheetData><autoFilter ref="A1:M${Math.max(1,last)}"/></worksheet>`;
  }else{
-  const p=(x,b=false)=>`<w:p><w:r>${b?'<w:rPr><w:b/></w:rPr>':''}<w:t>${xmlesc(x)}</w:t></w:r></w:p>`;
-  const tr=(x,b=false)=>`<w:tr>${x.map(v=>`<w:tc>${p(v,b)}</w:tc>`).join('')}</w:tr>`;
-  Z['[Content_Types].xml']=`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
-  Z['_rels/.rels']=`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/office/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
-  Z['word/document.xml']=`<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${p('Inventario HLMV',true)}<w:tbl>${tr(r.headers,true)}${r.rows.map(x=>tr(x)).join('')}</w:tbl><w:sectPr/></w:body></w:document>`;
+  const p=(text,b=false)=>`<w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r>${b?'<w:rPr><w:b/></w:rPr>':''}<w:t xml:space="preserve">${xmlesc(text)}</w:t></w:r></w:p>`;
+  const cell=(v,b=false)=>`<w:tc><w:tcPr><w:tcW w:w="1400" w:type="dxa"/></w:tcPr>${p(v,b)}</w:tc>`;
+  const tableRow=(v,b=false)=>`<w:tr>${v.map(x=>cell(x,b)).join('')}</w:tr>`;
+  const fields=[0,1,2,5,6,12];
+  const cols=fields.map(i=>r.headers[i]);
+  const records=r.rows.map(x=>tableRow(fields.map(i=>x[i]))).join('');
+  const annex=r.rows.map((x,i)=>p(`${x[0] || '(sin número)'} — ${x[1] || 'Bien sin descripción'}`,true)+p(`Marca: ${x[9]||'—'}  |  Modelo: ${x[10]||'—'}  |  Color: ${x[3]||'—'}  |  Valor: L ${x[7]||'—'}  |  Adquisición: ${x[8]||'—'}  |  Ficha: ${x[11]||'—'}`)).join('');
+  Z['[Content_Types].xml']=`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
+  Z['_rels/.rels']=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+  Z['word/document.xml']=`<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${p('HOSPITAL LEONARDO MARTÍNEZ VALENZUELA',true)}${p('Departamento de Bienes Nacionales',true)}${p(`Inventario: ${r.area}`)}${p(`Fecha de exportación: ${new Date().toISOString().slice(0,10)}  ·  Total de bienes: ${r.rows.length}`)}<w:tbl><w:tblPr><w:tblBorders><w:top w:val="single"/><w:left w:val="single"/><w:bottom w:val="single"/><w:right w:val="single"/><w:insideH w:val="single"/><w:insideV w:val="single"/></w:tblBorders></w:tblPr>${tableRow(cols,true)}${records}</w:tbl>${p('Información adicional de los bienes',true)}${annex}<w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body></w:document>`;
  }
  return zipSync(Object.fromEntries(Object.entries(Z).map(([k,v])=>[k,strToU8(v)])),{level:5});
 }
@@ -279,13 +312,14 @@ function publicFichaHTML(b,responsible,token){
   ['Marca',b.marca],['Modelo',b.modelo],['Serie',b.numeroSerie],['Color',b.color],
   ['Responsable del bien',responsible.nombre],
   ...(responsible.cargo?[['Tipo de asignación',responsible.cargo]]:[]),
-  ['Estado físico',b.estadoBueno===true?'Registrado como bueno':'Pendiente de verificación física']
+  ['Situación del bien',b.descargado?'Descargado · Fuera de servicio':'Activo'],
+  ['Estado físico',b.descargado?'Fuera de servicio':b.estadoBueno===true?'Registrado como bueno':'Sin confirmar']
  ];
  const photo=/^\/imagenes\/[a-f0-9]{32}\.(?:png|jpg|webp|gif)$/.test(fmt(b.fotoURL));
  const rows=fields.filter(([,v])=>v!==undefined&&v!==null&&v!=='').map(([k,v])=>'<div class="pair"><dt>'+publicHtmlEscape(k)+'</dt><dd>'+publicHtmlEscape(v)+'</dd></div>').join('');
  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Ficha pública - ${publicHtmlEscape(b.numeroInventario)}</title><style>
- :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d1310;color:#f1f8f3;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}header{border-bottom:1px solid #2d3b32;padding:17px 20px;color:#d4e2d7;font-size:14px}.wrap{max-width:780px;margin:36px auto;padding:0 16px}.card{background:#18221c;border:1px solid #334237;border-radius:18px;overflow:hidden;padding:25px}small{color:#b4c9b7}.eyebrow{color:#a3ed1b;text-transform:uppercase;letter-spacing:.1em;font-weight:700;font-size:12px}h1{font-size:clamp(23px,5vw,34px);line-height:1.15;margin:10px 0 18px}.photo{display:block;max-height:350px;max-width:100%;object-fit:contain;border-radius:12px;margin:0 auto 20px}.pair{display:grid;grid-template-columns:minmax(135px,1fr) minmax(0,2fr);gap:12px;padding:13px 0;border-top:1px solid #344138}dt{color:#b7c8bb}dd{margin:0;overflow-wrap:anywhere;font-weight:600}.note{margin:18px 0 0;color:#a9b9ad;font-size:13px}.mark{color:#9bf00b;font-weight:900;margin-right:9px}@media(max-width:480px){.wrap{margin:18px auto}.card{padding:18px}.pair{grid-template-columns:1fr;gap:2px}}
- </style></head><body><header><span class="mark">▣</span> Hospital Leonardo Martínez Valenzuela · Bienes Nacionales</header><main class="wrap"><article class="card"><div class="eyebrow">Consulta de inventario · Solo lectura</div><h1>${publicHtmlEscape(b.descripcion||'Bien inventariado')}</h1>${photo?`<img class="photo" src="/api/public/foto/${token}" alt="Fotografía del bien" loading="lazy">`:''}<dl>${rows}</dl><p class="note">Esta ficha pública muestra el nombre del responsable asignado actualmente. No da acceso a editar el inventario ni muestra identidad, teléfono, correo, valores de adquisición o historial. Los nombres están visibles para cualquier persona que tenga el QR.</p></article></main></body></html>`;
+ :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d1310;color:#f1f8f3;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}header{border-bottom:1px solid #2d3b32;padding:17px 20px;color:#d4e2d7;font-size:14px}.wrap{max-width:780px;margin:36px auto;padding:0 16px}.card{background:#fff;border:1px solid #dbe4ee;border-radius:18px;overflow:hidden;padding:25px}small{color:#64758b}.eyebrow{color:#087d78;text-transform:uppercase;letter-spacing:.1em;font-weight:700;font-size:12px}h1{font-size:clamp(23px,5vw,34px);line-height:1.15;margin:10px 0 18px}.photo{display:block;max-height:350px;max-width:100%;object-fit:contain;border-radius:12px;margin:0 auto 20px}.pair{display:grid;grid-template-columns:minmax(135px,1fr) minmax(0,2fr);gap:12px;padding:13px 0;border-top:1px solid #dbe4ee}dt{color:#64758b}dd{margin:0;overflow-wrap:anywhere;font-weight:600}.note{margin:18px 0 0;color:#64758b;font-size:13px}.mark{color:#087d78;font-weight:900;margin-right:9px}@media(max-width:480px){.wrap{margin:18px auto}.card{padding:18px}.pair{grid-template-columns:1fr;gap:2px}}
+ </style></head><body><header><img src="/icons/gobierno-salud.png" alt="Gobierno de Honduras - Secretaría de Salud" style="height:42px;width:auto;max-width:44%;object-fit:contain;display:inline-block;vertical-align:middle;margin-right:14px"><img src="/icons/bn-logo.png" alt="BN" style="height:42px;width:auto;vertical-align:middle;margin-right:8px"><strong>Bienes Nacionales</strong><span style="font-size:12px;color:#64758b"> · Hospital Leonardo Martínez Valenzuela</span></header><main class="wrap"><article class="card"><div class="eyebrow">Consulta de inventario · Solo lectura</div><h1>${publicHtmlEscape(b.descripcion||'Bien inventariado')}</h1>${photo?`<img class="photo" src="/api/public/foto/${token}" alt="Fotografía del bien" loading="lazy">`:''}<dl>${rows}</dl><p class="note">Esta ficha pública muestra el nombre del responsable asignado actualmente. No da acceso a editar el inventario ni muestra identidad, teléfono, correo, valores de adquisición o historial. Los nombres están visibles para cualquier persona que tenga el QR.</p></article></main></body></html>`;
 }
 async function publicFicha(req,db,token){
  if(req.method!=='GET'&&req.method!=='HEAD')fail('Método no permitido.',405);
@@ -336,12 +370,53 @@ async function route(req,env){
  }
  if(path==='/api/doc'&&method==='GET'){const col=fmt(url.searchParams.get('col')),id=fmt(url.searchParams.get('id'));checkCol(col);const d=await getDoc(db,col,id);return json({id,exists:!!d,data:d});}
  if(path==='/api/doc'&&['POST','PUT','DELETE'].includes(method))return json(await writeDoc(req,db,user,method));
- if(path==='/api/audit'&&method==='GET'){role(user,'administrador','inspector');return json({events:await all(db,'SELECT * FROM audit ORDER BY seq DESC LIMIT 200')});}
- if(path==='/api/bienes/revision'&&method==='POST'){
-  role(user,'administrador','inspector');const b=await pjson(req),ids=[...new Set(b.ids||[])];if(ids.length>3000||ids.some(x=>!/^[a-f0-9]{32}$/.test(x)))fail('Lista de bienes inválida.');
-  const st=now(),rv=b.revisado?1:0;for(let i=0;i<ids.length;i+=90){const ch=ids.slice(i,i+90);await run(db,`UPDATE docs SET data=json_set(data,'$.revisado',json(?),'$.revisionFecha',?,'$.revisionOrigen',?),updated=? WHERE collection='bienes' AND id IN (${ch.map(()=>'?').join(',')})`,rv?'true':'false',rv?st:'',rv?'Revisión manual':'',st,...ch);}
-  await record(db,'revision_masiva','bienes','',String(ids.length));return json({ok:true,actualizados:ids.length});
+ if(path==='/api/bienes/descargo'&&method==='POST'){
+  role(user,'administrador');
+  const body=await pjson(req);
+  const id=fmt(body.id), accion=fmt(body.accion);
+  if(!/^[a-f0-9]{32}$/.test(id))fail('Bien inválido.',400);
+  if(!['descargar','reactivar'].includes(accion))fail('Acción no permitida.',400);
+  const motivo=fmt(body.motivo),referencia=fmt(body.referencia);
+  if(motivo.length<8||motivo.length>500)fail('Indica un motivo de 8 a 500 caracteres.',400);
+  if(referencia.length>120)fail('Referencia documental demasiado larga.',400);
+  const bien=await getDoc(db,'bienes',id);if(!bien)fail('Bien no encontrado.',404);
+  if(!!bien.descargado===(accion==='descargar'))fail('La situación del bien ya fue actualizada. Refresca la página.',409);
+  const fecha=now();
+  const movimiento={fecha,accion,motivo,referencia,usuario:user.username};
+  const historico=Array.isArray(bien.historialDescargos)?bien.historialDescargos.slice(-49):[];
+  historico.push(movimiento);
+  const nuevo={...bien,descargado:accion==='descargar',historialDescargos:historico};
+  if(accion==='descargar'){
+    nuevo.fechaDescargo=fecha;nuevo.motivoDescargo=motivo;
+    nuevo.referenciaDescargo=referencia;nuevo.descargadoPor=user.username;
+    nuevo.estadoBueno=false;
+  }else{
+    nuevo.fechaReactivacion=fecha;nuevo.motivoReactivacion=motivo;
+  }
+  // No tocar el número SIAFI, el QR, el área ni el responsable.
+  const current=await run(db,"UPDATE docs SET data=?,updated=? WHERE collection=? AND id=? AND json_extract(data,'$.descargado') IS ?",JSON.stringify(nuevo),fecha,'bienes',id,bien.descargado?1:null);
+  // El control condicional cubre las fichas anteriores que no tenían el campo descargado.
+  if(!current.meta?.changes)fail('Otro usuario modificó este bien. Actualiza e inténtalo nuevamente.',409);
+  await record(db,accion==='descargar'?'descargo':'reactivacion','bienes',id,`${fmt(bien.numeroInventario)} | ${motivo} | Ref: ${referencia}`);
+  return json({ok:true,descargado:nuevo.descargado,fecha});
  }
+ if(path==='/api/bienes/eliminar'&&method==='POST'){
+  role(user,'administrador');
+  const b=await pjson(req),ids=[...new Set(Array.isArray(b.ids)?b.ids:[])];
+  if(!ids.length||ids.length>25||ids.some(id=>typeof id!=='string'||!/^[a-f0-9]{32}$/.test(id)))fail('Selecciona entre 1 y 25 bienes para eliminar.',400);
+  const encontrados=await all(db,`SELECT id,json_extract(data,'$.numeroInventario') AS numero FROM docs WHERE collection='bienes' AND id IN (${ids.map(()=>'?').join(',')})`,...ids);
+  if(encontrados.length!==ids.length)fail('Uno o varios bienes ya no existen. Actualiza el buscador antes de eliminarlos.',409);
+  const fecha=now(),cmds=[];
+  for(const x of encontrados){
+   cmds.push(db.prepare('DELETE FROM public_qr WHERE asset_id=?').bind(x.id));
+   cmds.push(db.prepare('DELETE FROM docs WHERE collection=? AND id=?').bind('bienes',x.id));
+   cmds.push(db.prepare('INSERT INTO audit(date,action,collection,document_id,details) VALUES(?,?,?,?,?)').bind(fecha,'eliminar','bienes',x.id,fmt(x.numero).slice(0,100)));
+  }
+  await db.batch(cmds);
+  return json({ok:true,eliminados:encontrados.length});
+ }
+
+ if(path==='/api/audit'&&method==='GET'){role(user,'administrador','inspector');return json({events:await all(db,'SELECT * FROM audit ORDER BY seq DESC LIMIT 200')});}
  if(path==='/api/public/link'&&method==='GET'){
   const numero=fmt(url.searchParams.get('numero'));if(!numero)fail('Falta numero de inventario.');
   return json({url:await publicQrLink(db,numero,url.origin)});
@@ -357,7 +432,14 @@ async function route(req,env){
   let ext,mime;if(u[0]===255&&u[1]===216){ext='jpg';mime='image/jpeg';}else if(u[0]===137&&u[1]===80){ext='png';mime='image/png';}else if(String.fromCharCode(...u.slice(0,4))==='RIFF'){ext='webp';mime='image/webp';}else if(String.fromCharCode(...u.slice(0,3))==='GIF'){ext='gif';mime='image/gif';}else fail('Formato de imagen inválido.');
   const name=numId()+'.'+ext;await run(db,'INSERT INTO images(name,data,mime) VALUES(?,?,?)',name,raw,mime);return json({url:'/imagenes/'+name});
  }
- if(path==='/api/export'&&method==='GET'){const f=url.searchParams.get('format')||'xlsx';if(!['xlsx','docx'].includes(f))fail('Formato no disponible.');const buf=exportOffice(await report(db,url.searchParams.get('areaId')),f);return binary(buf,f==='xlsx'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','inventario-hlmv.'+f);}
+ if(path==='/api/export'&&(method==='GET'||method==='HEAD')){
+  const f=url.searchParams.get('format')||'xlsx';if(!['xlsx','docx'].includes(f))fail('Formato no disponible.');
+  const mime=f==='xlsx'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const filename=(url.searchParams.get('areaId')?'inventario-area-hlmv.':'inventario-general-hlmv.')+f;
+  if(method==='HEAD')return new Response(null,{headers:{'content-type':mime,'content-disposition':`attachment; filename="${filename}"`,'cache-control':'no-store'}});
+  const buf=exportOffice(await report(db,url.searchParams.get('areaId')),f);
+  return binary(buf,mime,filename);
+ }
  if(path==='/api/backup'&&method==='GET'){
   role(user,'administrador');const docs=await all(db,'SELECT collection,id,data,updated FROM docs ORDER BY collection,id');const images=await all(db,'SELECT name,data,mime FROM images');const obj={format:'HLMV-D1-3.3',created:now(),docs,images};const zip=zipSync({'inventario.json':strToU8(JSON.stringify(obj))},{level:6});return binary(zip,'application/zip','respaldo-hlmv-d1.zip');
  }
