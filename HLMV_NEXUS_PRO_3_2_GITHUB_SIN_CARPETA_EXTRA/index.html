@@ -11,8 +11,9 @@
 <meta name="apple-mobile-web-app-title" content="Bienes HLMV">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/bn-taskbar-192.png">
-<link rel="apple-touch-icon" href="/icons/bn-taskbar-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/bn-icon-v42-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/bn-icon-v42-192.png">
+<link rel="apple-touch-icon" href="/icons/bn-icon-v42-192.png">
 
 <style>
 :root{
@@ -323,7 +324,7 @@ try {
 <body class="pro-login">
 <div id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside id="shellSidebar" aria-label="Menú principal">
-  <div class="sidebar-head"><div class="sidebar-logo"><img src="/icons/bn-taskbar-192.png" alt="BN"></div><div class="sidebar-brand">Bienes Nacionales<span>INVENTARIO INSTITUCIONAL</span></div></div>
+  <div class="sidebar-head"><div class="sidebar-logo"><img src="/icons/bn-icon-v42-192.png" alt="BN"></div><div class="sidebar-brand">Bienes Nacionales<span>INVENTARIO INSTITUCIONAL</span></div></div>
   <div class="sidebar-label">NAVEGACIÓN</div>
   <div class="sidebar-group">
     <a class="side-link" data-route="inventario" href="#/inventario" onclick="closeSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Panel principal</span></a>
@@ -345,7 +346,7 @@ try {
   </div>
   <div class="sidebar-bottom"><div class="sidebar-signal"><span class="signal-dot"></span><div><b>Inventario en línea</b><span>Cloudflare D1 · Datos compartidos</span></div></div><div class="sidebar-foot">Hospital Leonardo Martínez Valenzuela<br>Bienes Nacionales · San Pedro Sula</div></div>
 </aside>
-<div class="bn-gov-banner" aria-label="Identidad institucional"><img src="/icons/gobierno-salud-full.png" alt="Gobierno de la República de Honduras y Secretaría de Salud"><span class="bn-gov-divider" aria-hidden="true"></span><img class="bn-banner-mark" src="/icons/bn-logo.png" alt="BN"><div class="bn-gov-titles"><strong>Bienes Nacionales</strong><span>Hospital Leonardo Martínez Valenzuela</span></div></div>
+<div class="bn-gov-banner" aria-label="Identidad institucional"><img src="/icons/gobierno-salud-v42.png" alt="Gobierno de la República de Honduras y Secretaría de Salud"><span class="bn-gov-divider" aria-hidden="true"></span><img class="bn-banner-mark" src="/icons/bn-logo.png" alt="BN"><div class="bn-gov-titles"><strong>Bienes Nacionales</strong><span>Hospital Leonardo Martínez Valenzuela</span></div></div>
 <header class="top"><div class="wrap">
   <button class="mobile-menu-button" type="button" aria-label="Abrir menú" onclick="toggleSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="brand" onclick="location.hash='#/inventario'"><span class="brand-text">Bienes Nacionales <span class="bn-brand-muted">/ Gestión de inventario del HLMV</span></span></div>
@@ -696,6 +697,16 @@ async function scanQRFrame(){
 function readerFind(){
   const field=document.getElementById('readerCode');
   let v=(field?.value||'').trim();
+  // Las etiquetas nuevas llevan a una ficha pública tokenizada, no a un número SIAFI.
+  if(/^https?:\/\//i.test(v)){
+    try{
+      const u=new URL(v);
+      if(u.origin===location.origin && /^\/api\/public\/ficha\/[a-f0-9]{32}$/i.test(u.pathname)){
+        closeModal();location.href=u.href;return;
+      }
+      if(!u.hash.includes('#/bien/')){toast('El QR no es una ficha válida de este hospital.');return;}
+    }catch(e){toast('Enlace QR inválido.');return;}
+  }
   if(v.includes('#/bien/')){
     try{v=decodeURIComponent(v.split('#/bien/')[1].split(/[?&]/)[0]);}
     catch(e){toast('Enlace QR inválido.');return;}
