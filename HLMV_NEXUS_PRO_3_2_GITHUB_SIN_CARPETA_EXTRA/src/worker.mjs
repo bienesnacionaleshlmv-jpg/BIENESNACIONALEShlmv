@@ -291,26 +291,42 @@ async function publicQrLink(db,numero,originUrl){
 function publicHtmlEscape(value){return fmt(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Los enlaces publicos revelan expresamente el nombre del responsable para el bien
 // cuyo QR se ha escaneado. Identidad, telefono, correo, costo e historial NO se exponen.
-async function responsibleForPublicAsset(db,b){
+async function responsibleForPublicAsset(db,b,area=null){
+ // Primero, consultar la asignación ACTUAL; después, campos históricos de
+ // importaciones. No se publican identidad, teléfono, correo ni documentos.
  const areaId=fmt(b.areaId),personaId=fmt(b.personaId);
- if(b.personaTipo==='jefe'){
-  const area=areaId?await getDoc(db,'areas',areaId):null;
-  return {nombre:fmt(area?.jefeNombre)||'Sin responsable asignado',cargo:fmt(area?.jefeNombre)?'Jefatura de área':''};
- }
+ const a=area||(areaId?await getDoc(db,'areas',areaId):null);
+ const directName=[b.nombreResponsable,b.responsableNombre,b.encargadoNombre,
+   b.nombreEncargado,b.personaNombre,b.responsable,b.encargado]
+   .find(v=>typeof v==='string'&&fmt(v)&&fmt(v).length<=180&&!/(?:\d{5,}|@)/.test(fmt(v)));
  if(b.personaTipo==='empleado'){
   const emp=personaId?await getDoc(db,'empleados',personaId):null;
-  if(emp&&fmt(emp.areaId)===areaId&&fmt(emp.nombre))return {nombre:fmt(emp.nombre),cargo:'Personal asignado'};
+  if(emp&&fmt(emp.nombre))return {nombre:fmt(emp.nombre),cargo:'Empleado asignado'};
+  if(directName)return {nombre:fmt(directName),cargo:'Responsable registrado en el inventario'};
+  return {nombre:'Pendiente de verificar',cargo:'La asignación del empleado requiere actualización'};
  }
+ if(b.personaTipo==='jefe'){
+  if(fmt(a?.jefeNombre))return {nombre:fmt(a.jefeNombre),cargo:'Jefe del área'};
+  if(directName)return {nombre:fmt(directName),cargo:'Jefatura registrada en el inventario'};
+  return {nombre:'Pendiente de verificar',cargo:'Falta registrar el jefe del área'};
+ }
+ // Los bienes antiguos importados pueden guardar el encargado solo en texto.
+ if(directName)return {nombre:fmt(directName),cargo:'Responsable registrado en el inventario'};
+ // En importaciones Excel oficiales se cargaba el inventario al jefe de área.
+ const fromOfficialExcel=[b.revisionOrigen,b.fuenteImportacion,b.origenImportacion].some(v=>String(v||'').toLowerCase().includes('excel'))||
+  Boolean(b.fuenteImportacionExcel||b.hojaExcel||b.importadoPorExcel);
+ if(fromOfficialExcel&&fmt(a?.jefeNombre))return {nombre:fmt(a.jefeNombre),cargo:'Jefatura del área (importación Excel)'};
  return {nombre:'Sin responsable asignado',cargo:''};
 }
-function publicFichaHTML(b,responsible,token){
+function publicFichaHTML(b,responsible,token,areaName){
  // Lista blanca de CAMPOS publicos: datos del objeto y NOMBRE del encargado.
  // No mostrar números de identidad, contacto, costos, documentos ni historial.
  const fields=[
   ['Número de inventario',b.numeroInventario],
   ['Descripción',b.descripcion],
+  ['Área / ubicación',areaName],
   ['Marca',b.marca],['Modelo',b.modelo],['Serie',b.numeroSerie],['Color',b.color],
-  ['Responsable del bien',responsible.nombre],
+  ['Responsable actual del bien',responsible.nombre],
   ...(responsible.cargo?[['Tipo de asignación',responsible.cargo]]:[]),
   ['Situación del bien',b.descargado?'Descargado · Fuera de servicio':'Activo'],
   ['Estado físico',b.descargado?'Fuera de servicio':b.estadoBueno===true?'Registrado como bueno':'Sin confirmar']
@@ -327,8 +343,9 @@ async function publicFicha(req,db,token){
  const row=await sql(db,`SELECT d.data FROM public_qr p JOIN docs d ON d.collection='bienes' AND d.id=p.asset_id WHERE p.token=? LIMIT 1`,token);
  if(!row)fail('Ficha no encontrada.',404);
  const bien=JSON.parse(row.data);
- const responsible=await responsibleForPublicAsset(db,bien);
- const body=publicFichaHTML(bien,responsible,token);
+ const area=fmt(bien.areaId)?await getDoc(db,'areas',fmt(bien.areaId)):null;
+ const responsible=await responsibleForPublicAsset(db,bien,area);
+ const body=publicFichaHTML(bien,responsible,token,fmt(area?.nombre)||fmt(bien.ubicacionSiafi)||'Área por confirmar');
  return new Response(req.method==='HEAD'?null:body,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}});
 }
 async function publicFichaPhoto(req,db,token){
@@ -344,6 +361,22 @@ async function publicFichaPhoto(req,db,token){
  const raw=Uint8Array.from(atob(img.data),c=>c.charCodeAt(0));
  return new Response(req.method==='HEAD'?null:raw,{status:200,headers:{'content-type':img.mime,'cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer'}});
 }
+// Compatibilidad: las etiquetas impresas en las primeras versiones llevan
+// /index.html#/bien/NUMERO. La parte # no llega al servidor: el index.html
+// redirige a esta ruta. Solo se sirve la ficha pública (lista blanca).
+// Advertencia institucional: un número SIAFI conocido permite abrir esta ficha.
+async function publicLegacyRedirect(req,db,codigo,originUrl){
+ if(req.method!=='GET'&&req.method!=='HEAD')fail('Método no permitido.',405);
+ let numero;
+ try{numero=decodeURIComponent(codigo);}catch{fail('Código de QR inválido.',400);}
+ if(!numero||numero.length>100||/[\u0000-\u001f<>]/.test(numero))fail('Código de QR inválido.',400);
+ const link=await publicQrLink(db,numero,originUrl);
+ return new Response(null,{status:302,headers:{
+  'location':link,'cache-control':'no-store','x-robots-tag':'noindex,nofollow',
+  'x-content-type-options':'nosniff','referrer-policy':'no-referrer'
+ }});
+}
+
 async function route(req,env){
  const url=new URL(req.url),path=url.pathname,method=req.method,db=env.DB;
  if(!db)fail('Falta vincular la base D1 con nombre DB en Cloudflare.',503);
@@ -352,6 +385,7 @@ async function route(req,env){
  // La ficha publica se resuelve ANTES de comprobar una sesion. No expone /api/doc ni /api/list.
  if(path.startsWith('/api/public/ficha/'))return publicFicha(req,db,path.slice('/api/public/ficha/'.length));
  if(path.startsWith('/api/public/foto/'))return publicFichaPhoto(req,db,path.slice('/api/public/foto/'.length));
+ if(path.startsWith('/api/public/legado/'))return publicLegacyRedirect(req,db,path.slice('/api/public/legado/'.length),url.origin);
  const ready=await bootAdmin(env);if(!ready)fail('Falta configurar los secretos HLMV_ADMIN_USER y HLMV_ADMIN_PASSWORD en Cloudflare.',503);
  const user=await currentUser(req,db);
  if(path==='/api/status'&&method==='GET')return json({initialized:true,authenticated:!!user,user,version:'3.3-cloudflare',central:true,lan:false,publicUrl:url.origin});
