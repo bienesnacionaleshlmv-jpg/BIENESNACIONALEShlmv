@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Bienes HLMV">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/bn-icon-v42-32.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/bn-icon-v42-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/bn-icon-v42-192.png">
 <link rel="apple-touch-icon" href="/icons/bn-icon-v42-192.png">
 
@@ -694,6 +694,18 @@ async function scanQRFrame(){
   }
   if(QR_SCAN_RUNNING)QR_SCAN_TIMER=setTimeout(scanQRFrame,220);
 }
+// Los QR antiguos contienen #/bien/NUMERO y no incluyen un token público.
+// La redirección solo se aplica cuando se abre el enlace directamente (al
+// escanear); los enlaces internos de un administrador siguen siendo editables.
+function bnLegacyQrCode(hash=location.hash){
+ const m=/^#\/bien\/(.+)$/i.exec(hash||'');if(!m)return null;
+ try{const v=decodeURIComponent(m[1].split('?')[0]).trim();return v&&v.length<=100?v:null;}catch{return null;}
+}
+function bnOpenPublicQr(numero){
+ const codigo=String(numero||'').trim();
+ if(!codigo){toast('Indica el número de inventario.');return;}
+ location.assign('/api/public/legado/'+encodeURIComponent(codigo));
+}
 function readerFind(){
   const field=document.getElementById('readerCode');
   let v=(field?.value||'').trim();
@@ -712,7 +724,7 @@ function readerFind(){
     catch(e){toast('Enlace QR inválido.');return;}
   }
   if(!v){toast('Escribe o escanea un número.');return;}
-  closeModal();location.hash='#/bien/'+encodeURIComponent(v);render();
+  closeModal();bnOpenPublicQr(v);
 }
 // Solo caché de interfaz; los datos, imágenes y archivos privados nunca se almacenan en Service Worker.
 if('serviceWorker' in navigator && window.isSecureContext){
@@ -1554,6 +1566,8 @@ async function exportGeneralWord(){return downloadFromServer('/api/export?format
 
 // ---------- Boot ----------
 (async function boot(){
+  const legacyQR=bnLegacyQrCode();
+  if(legacyQR){bnOpenPublicQr(legacyQR);return;}
   await initFirebase();
   if(!DB) return;
   updateMobileNav();
