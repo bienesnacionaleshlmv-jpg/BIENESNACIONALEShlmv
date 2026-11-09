@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "HLMV NEXUS PRO — Bienes Nacionales",
-  "short_name": "NEXUS HLMV",
-  "description": "Control de bienes SIAFI, responsables, áreas, fotografías y códigos QR.",
+  "name": "Bienes Nacionales — Hospital Leonardo Martínez Valenzuela",
+  "short_name": "Bienes Nacionales",
+  "description": "Inventario institucional de Bienes Nacionales. Hospital Leonardo Martínez Valenzuela.",
   "lang": "es-HN",
   "start_url": "/#/inventario",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#080b0b",
-  "theme_color": "#0d150f",
+  "background_color": "#f5f7fa",
+  "theme_color": "#ffffff",
   "orientation": "any",
   "icons": [
     {

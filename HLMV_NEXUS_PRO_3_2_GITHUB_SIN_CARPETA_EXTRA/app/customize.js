@@ -1,9 +1,9 @@
 /* NEXUS PRO 2.6 | Preferencias visuales locales. Sin acceso a SQLite ni al inventario. */
 (function(){
 'use strict';
-const KEY='hlmv_nexus_appearance_v1';
-const DEFAULTS=Object.freeze({theme:'dark',accent:'green',text:'normal',density:'comfortable',menu:'expanded'});
-const ALLOWED={theme:['dark','light'],accent:['green','blue','purple','orange','cyan'],text:['normal','large'],density:['comfortable','compact'],menu:['expanded','compact']};
+const KEY='hlmv_bn_institucional_appearance_v1';
+const DEFAULTS=Object.freeze({theme:'light',accent:'blue',text:'normal',density:'comfortable',menu:'expanded'});
+const ALLOWED={theme:['light'],accent:['green','blue','purple','orange','cyan'],text:['normal','large'],density:['comfortable','compact'],menu:['expanded','compact']};
 let preview={...DEFAULTS};
 function valid(raw){
   const result={...DEFAULTS};
@@ -21,7 +21,7 @@ function apply(settings){
   root.dataset.nexusMenu=v.menu;
   // Change the Chrome/PWA toolbar color to match the selected mode.
   const meta=document.querySelector('meta[name="theme-color"]');
-  if(meta)meta.content=v.theme==='light'?'#f2f5f9':'#0d150f';
+  if(meta)meta.content='#ffffff';
 }
 function updateOptions(){
   document.querySelectorAll('#nexusAppearanceDialog [data-nexus-setting]').forEach(button=>{

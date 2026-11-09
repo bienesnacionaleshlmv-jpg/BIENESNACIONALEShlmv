@@ -1,0 +1,132 @@
+/* Bienes Nacionales HLMV · Interfaz institucional clara · v4.0
+   Solo diseño: los registros y permisos permanecen en Cloudflare D1. */
+:root, :root[data-theme="light"], :root[data-theme="dark"], :root[data-nexus-theme]{
+ --bg:#f5f7fa!important;--surface:#fff!important;--surface2:#f8fafd!important;
+ --ink:#132a48!important;--muted:#617288!important;--faint:#edf2f7!important;
+ --accent:#0b3e70!important;--accent-dim:#e7f0f7!important;--accent2:#087e79!important;
+ --ok:#087e79!important;--ok-soft:#e8f6f3!important;
+ --danger:#b93441!important;--danger-soft:#fdf0f0!important;
+ --border:#dce5ef!important;--font:'Segoe UI Variable','Segoe UI',-apple-system,BlinkMacSystemFont,Arial,sans-serif!important;
+ --minimal-panel:#fff!important;--minimal-hover:#eff6fa!important;--minimal-border:#dce5ef!important;
+ --minimal-title:#132a48!important;--minimal-muted:#617288!important;
+ --nexus-accent:#087e79!important;--nexus-accent-rgb:8,126,121!important;
+ color-scheme:light!important;
+}
+html{background:#f5f7fa!important}
+body{background:#f5f7fa!important;color:#132a48!important;font-size:14px!important;letter-spacing:0!important}
+body::after,body::before{display:none!important}
+a{color:#0b4b7a!important}
+button,input,select,textarea{font:inherit;color:#173452}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #087e79;outline-offset:2px}
+::selection{background:#d8efec;color:#09324f}
+#shellSidebar{width:254px!important;background:#fbfcfe!important;border-right:1px solid #dbe4ee!important;box-shadow:none!important;padding:20px 13px!important}
+.sidebar-head{border-bottom:1px solid #e1e7ef!important;padding:13px 9px 21px!important;margin-bottom:20px!important}
+.sidebar-logo{background:#fff!important;width:54px!important;height:54px!important;border:1px solid #e4ebf3!important;box-shadow:0 4px 14px #12345b0e!important;border-radius:14px!important;overflow:hidden}
+.sidebar-logo img{width:100%;height:100%;object-fit:contain;padding:4px}
+.sidebar-brand{font-size:15px!important;letter-spacing:-.03em!important;color:#0b2d51!important;font-weight:800!important}
+.sidebar-brand span{font-size:9px!important;color:#6a7d8f!important;letter-spacing:.07em!important;margin-top:5px!important}
+.sidebar-label{color:#8190a2!important;letter-spacing:.08em!important;font-size:10px!important}
+.side-link{color:#32465e!important;border-radius:11px!important;font-weight:600!important;padding:11px 13px!important}
+.side-link svg{color:#4a627c!important}
+.side-link:hover{background:#eef5fa!important;color:#143654!important}
+.side-link.active{background:#e5f4f1!important;color:#075f65!important;box-shadow:inset 3px 0 0 #087e79!important}
+.sidebar-bottom{border-top:1px solid #e4e9ef;padding-top:12px}
+.sidebar-signal{background:#f4f8fc!important;border:1px solid #e3ebf2!important;color:#526981!important}
+.sidebar-signal b{color:#234360!important}
+.sidebar-foot{color:#72849a!important}
+.signal-dot,.online-dot{background:#087e79!important;box-shadow:0 0 0 3px #087e791d!important}
+.bn-gov-banner{margin-left:254px;min-height:87px;padding:10px 30px;display:flex;align-items:center;gap:20px;background:linear-gradient(120deg,#fff 60%,#edf7f8 100%);border-bottom:1px solid #dce6ef}
+.bn-gov-banner img{height:62px;width:auto;max-width:46%;object-fit:contain;object-position:left center}
+.bn-gov-banner .bn-banner-mark{height:49px;max-width:72px}
+.bn-gov-divider{height:47px;width:1px;background:#cbd7e4}
+.bn-gov-titles{display:flex;flex-direction:column;gap:1px;line-height:1.2;min-width:0}
+.bn-gov-titles strong{font-size:20px;font-weight:800;color:#0b2c4e}
+.bn-gov-titles span{font-size:11px;color:#506a7d}
+header.top{margin-left:254px!important;background:rgba(255,255,255,.96)!important;border-bottom:1px solid #dce5ef!important;box-shadow:none!important;padding:11px 0!important}
+header.top .wrap{padding-left:30px!important;padding-right:30px!important}
+header.top .brand-text{color:#173756!important}
+.bn-brand-muted{color:#6b7e91!important;font-weight:400}
+.top-command{background:#f8fafc!important;border:1px solid #dae5ed!important;border-radius:12px!important;color:#50647c!important}
+.top-command:hover{background:#eef5fa!important;border-color:#7fa5b7!important;color:#0f3651!important}
+.top-command strong{color:#72849a!important;border-color:#e1e8ef!important}
+nav.pills button.navlink,.nexus-top-customize,.nexus-top-import{color:#2c425a!important;border:1px solid #dce5ef!important;background:#fff!important;box-shadow:none!important;border-radius:10px!important}
+nav.pills button.navlink:hover,.nexus-top-customize:hover{background:#f1f7fb!important}
+nav.pills .role-badge.owner{background:#e7f5f1!important;color:#116463!important;border:1px solid #bedcd7!important}
+nav.pills .role-badge:not(.owner){background:#eef2f8!important;color:#526982!important}
+#app{margin-left:254px!important;min-height:calc(100vh - 180px)!important}
+#app .wrap{max-width:1580px!important;padding-left:30px!important;padding-right:30px!important}
+.inv-wrap{padding-top:30px!important}
+h1,h2,h3,.pro-stat-value{color:#102f52!important}
+.pro-pagehead h1,.bn-welcome h1{font-size:clamp(29px,2.65vw,39px)!important;letter-spacing:-.035em!important}
+.pro-kicker,.bn-overline{color:#087e79!important;font-size:11px;letter-spacing:.09em;font-weight:700;margin:0 0 5px}
+.pro-subtitle,.pro-muted,.pro-panel-header p,.pro-stat-note{color:#6a7b8e!important}
+.pro-stat-grid{gap:14px!important}
+.pro-stat,.pro-panel,.card,.stat,.area-card,.table-wrap,.pro-results-wrap,.pro-filter-panel{background:#fff!important;border:1px solid #dce5ef!important;border-radius:16px!important;box-shadow:0 5px 20px #0a294708!important}
+.pro-stat:after,.stat:before,.area-card:after{display:none!important}
+.pro-stat{min-height:133px;padding:19px!important}
+.pro-stat-top{color:#566d85!important;font-weight:650}
+.pro-stat-icon{background:#edf3fb!important;color:#0a557e!important;border:0!important}
+.pro-stat-value{font-size:32px!important}
+.pro-panel-header h2,.pro-panel-header h3{font-size:17px!important;color:#123555!important;font-weight:750}
+.btn,.btn-hero.primary{background:#0b3e70!important;color:white!important;border:1px solid #0b3e70!important;border-radius:11px!important;box-shadow:none!important;font-weight:700!important}
+.btn:hover{background:#155480!important;filter:none!important;transform:none!important}
+.btn.secondary{background:#fff!important;border:1px solid #d5e1eb!important;color:#173d5f!important}
+.btn.secondary:hover{background:#edf5fa!important;border-color:#94bec4!important}
+.btn.danger,.btn.danger-solid{background:#fff2f2!important;color:#ad2d40!important;border:1px solid #f0cbd0!important}
+.btn.danger:hover,.btn.danger-solid:hover{background:#fbe5e6!important}
+.bn-discharge{background:#0d4d72!important;color:#fff!important;border-color:#0d4d72!important}
+.pro-results-wrap .result-table th,th{background:#f3f6f9!important;color:#4b617a!important;letter-spacing:0!important;border-bottom:1px solid #dce5ef!important}
+td{border-bottom:1px solid #edf0f5!important;color:#263c53!important}
+tr:hover td{background:#f7fbfe!important}
+.table-wrap{background:#fff!important}
+.area-card:hover{background:#f6fbfc!important;box-shadow:0 10px 22px #153e5e12!important;border-color:#77a6bd!important;transform:none!important}
+.area-card h3{color:#133d60!important}.area-card .jefe,.area-card .counts{color:#60758c!important}.area-card .counts{border-color:#e4eaf1!important}.area-card .counts b{color:#087e79!important}
+.pro-main-search input,.pro-search-page .field input,.pro-search-page .field select,.field input,.field select,.field textarea{background:#fff!important;border:1px solid #d5e0ec!important;color:#143b5d!important;border-radius:10px!important}
+.pro-search-page .field input::placeholder{color:#92a1b2!important}
+.pro-search-page .field label{color:#526a83!important}
+.pro-search-symbol{color:#087e79!important}
+.pro-period,.pro-type-preview,.pro-quick{background:#fff!important;border-color:#dce5ef!important;color:#21425f!important}
+.pro-quick span{color:#087e79!important}
+.asset-badge{background:#edf5f7!important;color:#235c69!important;border-color:#c6dee3!important}
+.asset-badge.bad{background:#f7f2e9!important;color:#885f24!important;border-color:#ebd8b3!important}
+.badge.ok{background:#e5f6ee!important;color:#166f4a!important}
+.badge.bad{background:#f9ebe6!important;color:#a34c35!important}
+.bn-welcome{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 24px;flex-wrap:wrap}
+.bn-welcome h1{margin:0 0 4px!important}
+.bn-home-area-link{display:inline-flex;align-items:center;justify-content:center;padding:11px 17px;background:#e4f3f1;color:#095c62!important;border:1px solid #c6e2df;border-radius:12px;font-weight:700}
+.bn-home-area-link:hover{background:#d6ecea}
+.bn-home .bn-actions{margin:7px 0 20px;padding:23px!important}
+.bn-actions .pro-panel-header{margin:0 0 16px}
+.bn-searchbox{display:flex;gap:10px;margin:0 0 16px}
+.bn-searchbox input{width:100%;min-width:0;padding:12px 16px;background:#fafcfe;border:1px solid #d8e3ef;border-radius:10px;color:#17334e;outline-color:#087e79}
+.bn-action-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.bn-action{font:inherit;font-size:15px;min-height:96px;border:1px solid #d8e5ef;background:#f9fbfd;color:#0b4971!important;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;text-align:center;text-decoration:none!important;font-weight:700}
+.bn-action span{font-size:12px;color:#1b476a}
+.bn-action.primary{background:#0b3e70;color:#fff!important;border-color:#0b3e70}
+.bn-action.primary span{color:#fff}
+.bn-action.danger{background:#fffaf8;color:#ad4250!important;border-color:#f4dce0}
+.bn-action.danger span{color:#9d394a}
+.bn-action:hover{border-color:#87b3be;box-shadow:0 5px 16px #153e5d12;transform:translateY(-1px)}
+.bn-home-columns{grid-template-columns:1.6fr 1fr!important;gap:16px}
+.bn-recent{min-width:625px;width:100%}
+.bn-recent th,.bn-recent td{padding:11px 10px!important;font-size:12px!important}
+.bn-status{display:inline-block;border:1px solid #c9e5d8;padding:5px 9px;background:#e5f5ee;color:#176d53;font-size:11px;font-weight:700;border-radius:99px;white-space:nowrap}
+.bn-status.out{background:#fff0eb;border-color:#f2cebf;color:#9c5039}
+.bn-status.active{background:#e7f4ef;color:#167453}
+.bn-quicklinks{display:flex;flex-direction:column;gap:7px}
+.bn-quicklinks a{display:block;background:#f8fafc;border:1px solid #e1e8ef;border-radius:10px;padding:11px 13px;color:#28516e!important;font-weight:600}
+.bn-quicklinks a:hover{background:#edf8fa}
+.bn-qr-note{background:#e8f5f1;border:1px solid #d4eae4;color:#32655d;padding:13px 16px;border-radius:12px;font-size:12px;margin:17px 0 0}
+.bn-selection-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0!important}
+.bn-selection-bar h3{font-size:15px;margin-bottom:4px}
+.bn-alert{background:#fff6ec;border-left:3px solid #c28138;padding:12px 15px;color:#805928;margin:12px 0;border-radius:8px}
+.modal,.nexus-appearance-dialog{background:#fff!important;color:#172f4a!important;border-color:#d4e0e9!important}
+.mobile-tabbar{background:#fff!important;border-top:1px solid #dce5ef!important;box-shadow:0 -4px 20px #09283d12!important}
+.mobile-tabbar button{color:#557088!important}
+.mobile-tabbar button.active{color:#087e79!important}
+@media(max-width:1180px){#shellSidebar{width:220px!important}#app,header.top,.bn-gov-banner{margin-left:220px!important}.bn-action-grid{grid-template-columns:repeat(3,1fr)}.bn-home-columns{grid-template-columns:1fr!important}}
+@media(max-width:850px){#shellSidebar{width:254px!important;transform:translateX(-105%)!important}body.sidebar-open #shellSidebar{transform:translateX(0)!important}#app,header.top,.bn-gov-banner{margin-left:0!important}.bn-gov-banner{padding:9px 16px;min-height:60px;gap:11px}.bn-gov-banner img{height:42px;max-width:43%}.bn-gov-banner .bn-banner-mark{height:34px;max-width:50px}.bn-gov-titles strong{font-size:15px}.bn-gov-titles span{font-size:10px}.bn-gov-divider{height:32px}}
+@media(max-width:650px){.bn-gov-banner{gap:8px}.bn-gov-banner>img:first-child{max-width:45%;height:34px}.bn-gov-banner .bn-banner-mark{height:33px;max-width:42px}.bn-gov-titles strong{font-size:12px}.bn-gov-titles span{font-size:8px}.bn-brand-muted{display:none}.bn-home .bn-actions{padding:16px!important}.bn-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bn-action{min-height:79px}.bn-searchbox{flex-direction:column}.bn-welcome{align-items:flex-start}.bn-home-columns{grid-template-columns:1fr!important}.bn-selection-bar{flex-direction:column;align-items:flex-start}.bn-selection-bar .row-actions{width:100%;flex-wrap:wrap}.bn-selection-bar .btn{flex:1 1 150px}.bn-recent{min-width:520px}.bn-stats .pro-stat{min-height:110px}.bn-stats .pro-stat-value{font-size:26px!important}.bn-gov-banner img{object-fit:contain}}
+
+/* El encabezado también es de ancho completo antes de iniciar sesión. */
+body.pro-login .bn-gov-banner{margin-left:0!important}

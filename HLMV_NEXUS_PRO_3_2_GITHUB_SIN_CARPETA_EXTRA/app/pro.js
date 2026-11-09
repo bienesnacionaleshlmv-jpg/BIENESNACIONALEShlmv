@@ -1,4 +1,4 @@
-/* NEXUS PRO · Funciones añadidas sin sustituir el motor del inventario existente. */
+/* Bienes Nacionales · Funciones añadidas sin sustituir el motor del inventario existente. */
 (function(){
   if(!document.documentElement.dataset?.theme)document.documentElement.setAttribute('data-theme','dark');
   document.addEventListener('keydown', e=>{
@@ -49,7 +49,7 @@ async function getProData(){
   const people=employees.docs.map(d=>({id:d.id,...d.data()}));
   return {areas,bienes,people,areaById:Object.fromEntries(areas.map(a=>[a.id,a])),personById:Object.fromEntries(people.map(p=>[p.id,p]))};
 }
-/* NEXUS PRO 2.5: clasificación VIRTUAL de objetos a partir de la descripción.
+/* Bienes Nacionales 2.5: clasificación VIRTUAL de objetos a partir de la descripción.
    No cambia la descripción original, el SIAFI, el área, la persona ni el estado.
    Mismo objeto base (escritorio de 1 o 3 gavetas) = una sola familia. */
 function proObjectName(description){
@@ -152,7 +152,7 @@ function proFilterObjects(){
   }).join(''):'<div class="pro-empty">No hay tipos de bienes con esos filtros.</div>';
 }
 
-/* Buscador avanzado NEXUS PRO: filtros combinables, periodo rápido y responsable. */
+/* Buscador avanzado Bienes Nacionales: filtros combinables, periodo rápido y responsable. */
 let PRO_QUICK_PERIOD='all';
 let PRO_SELECTED=new Set();
 let PRO_VISIBLE=[];
@@ -190,17 +190,17 @@ async function renderAdvancedSearch(app){
         <div class="field pro-type-select-field"><label for="proType">Tipo de objeto</label><select id="proType" onchange="filterProAssets()"><option value="">Todos los tipos</option>${proObjectGroups(d.bienes).sort((a,b)=>a.name.localeCompare(b.name,'es')).map(g=>`<option value="${esc(g.key)}" ${typeChoice===g.key?'selected':''}>${esc(g.name)} (${g.bienes.length})</option>`).join('')}</select></div>
         <div class="field"><label for="proFrom">Desde la fecha</label><input id="proFrom" type="date" onchange="proManualDateFilter()"></div>
         <div class="field"><label for="proTo">Hasta la fecha</label><input id="proTo" type="date" onchange="proManualDateFilter()"></div>
-        <div class="field"><label for="proState">Estado del bien</label><select id="proState" onchange="filterProAssets()"><option value="">Cualquier estado</option><option value="good">Buen estado</option><option value="bad">Requiere revisión</option></select></div>
+        <div class="field"><label for="proState">Estado del bien</label><select id="proState" onchange="filterProAssets()"><option value="">Cualquier estado</option><option value="active">Activos</option><option value="discharged">Descargados</option><option value="good">Funciona</option><option value="bad">Estado físico sin confirmar</option></select></div>
         <div class="field"><label for="proMin">Valor mínimo (L)</label><input id="proMin" type="number" min="0" step="0.01" placeholder="Desde" oninput="filterProAssets()"></div>
         <div class="field"><label for="proMax">Valor máximo (L)</label><input id="proMax" type="number" min="0" step="0.01" placeholder="Hasta" oninput="filterProAssets()"></div>
       </div>
     </section>
     <div class="result-line pro-result-bar"><div><strong id="proCount" aria-live="polite">${d.bienes.length} bienes registrados</strong><span id="proFilterDetail"> · Mostrando todos los registros</span></div><button type="button" class="btn secondary small" onclick="resetProFilters()">Quitar filtros</button></div>
-    <section class="pro-panel nexus-review-bar" aria-label="Revisión masiva de inventario">
-      <div><h3>✓ Revisión del inventario</h3><p class="pro-muted">Los bienes existentes y los nuevos importados por Excel/PDF oficiales se marcan como Revisados (registro documental). Esto no confirma su estado físico ni elimina las alertas SIAFI. Puedes modificar la revisión manualmente.</p><p class="pro-muted" id="proReviewCount">Ningún bien seleccionado</p></div>
-      <div class="row-actions"><button class="btn secondary small" type="button" onclick="proSelectAll(true)">Seleccionar todos los resultados</button><button class="btn secondary small" type="button" onclick="proSelectAll(false)">Quitar selección</button><button class="btn small" type="button" onclick="proMarkReviewed(true)">✓ Marcar revisados</button><button class="btn secondary small" type="button" onclick="proMarkReviewed(false)">Marcar pendientes</button></div>
+    <section class="pro-panel bn-selection-bar" aria-label="Acciones sobre bienes seleccionados">
+      <div><h3>Gestión de bienes</h3><p class="pro-muted" id="proReviewCount">Ningún bien seleccionado</p></div>
+      <div class="row-actions"><button class="btn secondary small" type="button" onclick="proSelectAll(true)">Seleccionar resultados</button><button class="btn secondary small" type="button" onclick="proSelectAll(false)">Quitar selección</button>${IS_ADMIN?`<button class="btn danger-solid small" type="button" onclick="proDeleteSelected()">Eliminar seleccionados</button>`:''}<button class="btn secondary small" type="button" onclick="exportGeneralExcel()">Exportar Excel</button><button class="btn secondary small" type="button" onclick="exportGeneralWord()">Exportar Word</button></div>
     </section>
-    <div class="table-wrap pro-results-wrap"><table class="result-table"><thead><tr><th class="chk-col"><input type="checkbox" id="proAllCheck" onchange="proSelectAll(this.checked)" aria-label="Seleccionar todos los resultados filtrados"></th><th>Bien</th><th>N.º SIAFI</th><th>Lugar / área</th><th>Persona a cargo</th><th id="proDateHeader">Fecha de registro</th><th>Valor</th><th>Estado físico</th><th>Revisión</th><th>Ficha</th></tr></thead><tbody id="proResults"></tbody></table></div>
+    <div class="table-wrap pro-results-wrap"><table class="result-table"><thead><tr><th class="chk-col"><input type="checkbox" id="proAllCheck" onchange="proSelectAll(this.checked)" aria-label="Seleccionar todos los resultados filtrados"></th><th>Bien</th><th>N.º SIAFI</th><th>Lugar / área</th><th>Persona a cargo</th><th id="proDateHeader">Fecha de registro</th><th>Valor</th><th>Estado físico</th><th>Situación</th><th>Acciones</th></tr></thead><tbody id="proResults"></tbody></table></div>
   </div>`;
   filterProAssets();
 }
@@ -264,7 +264,9 @@ function filterProAssets(){
     if(area&&area!==b.areaId)return false;
     if(objectType&&proNormalize(proObjectName(b.descripcion)).toUpperCase()!==objectType)return false;
     if(personTerm&&!proNormalize([responsible,identity].join(' ')).includes(personTerm))return false;
-    if(state&&Boolean(b.estadoBueno)!==(state==='good'))return false;
+    if(state==='active'&&b.descargado)return false;
+    if(state==='discharged'&&!b.descargado)return false;
+    if((state==='good'||state==='bad')&&Boolean(b.estadoBueno)!==(state==='good'))return false;
     const priceRaw=b.precio;
     const price=Number(priceRaw);
     if(min!==''&&(priceRaw==null||priceRaw===''||!Number.isFinite(price)||price<Number(min)))return false;
@@ -302,9 +304,9 @@ function filterProAssets(){
     <td>${esc(proResponsible(b,d))}</td>
     <td class="pro-date-cell">${esc(proAssetDate(b,dateField)||'—')}</td>
     <td>${b.precio!==undefined&&b.precio!==null&&b.precio!=='' ? 'L '+Number(b.precio).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
-    <td><span class="asset-badge ${b.estadoBueno?'':'bad'}">${b.estadoBueno?'Bueno':'Revisar'}</span></td>
-    <td><span class="asset-badge ${b.revisado?'':'bad'}">${b.revisado?'✓ Revisado':'Pendiente'}</span></td>
-    <td><a class="btn secondary small" href="#/bien/${encodeURIComponent(b.numeroInventario)}">Ver ficha ↗</a></td>
+    <td>${b.descargado?'Fuera de servicio':b.estadoBueno?'Funciona':'Sin confirmar'}</td>
+    <td><span class="bn-status ${b.descargado?'out':'active'}">${b.descargado?'Descargado':'Activo'}</span></td>
+    <td><div class="row-actions"><a class="btn secondary small" href="#/bien/${encodeURIComponent(b.numeroInventario)}">Ver ficha ↗</a>${IS_ADMIN?`<button class="btn secondary small" type="button" onclick="bnOpenDescargo('${b.id}')">${b.descargado?'Reactivar':'Descargo'}</button><button class="btn danger small" type="button" onclick="confirmDeleteBien('${b.id}','${b.areaId||''}')">Eliminar</button>`:''}</div></td>
     </tr>`).join(''):'<tr><td colspan="10"><div class="pro-empty"><strong>No hay bienes que coincidan.</strong><div style="margin-top:8px">Prueba otra fecha, lugar o persona a cargo, o selecciona «Quitar filtros».</div></div></td></tr>';
   window.__proFilteredBienes=out;
   proUpdateSelectionCount();
@@ -318,17 +320,27 @@ function proUpdateSelectionCount(){
 }
 function proSelectOne(id,checked){if(checked)PRO_SELECTED.add(id);else PRO_SELECTED.delete(id);proUpdateSelectionCount();}
 function proSelectAll(checked){PRO_SELECTED=checked?new Set(PRO_VISIBLE.map(x=>x.id)):new Set();document.querySelectorAll('#proResults input[type=checkbox]').forEach(c=>{c.checked=checked;});proUpdateSelectionCount();}
-function proMarkReviewed(revisado){
-  if(!PRO_SELECTED.size){toast('Selecciona al menos un bien.');return;}
-  const ids=[...PRO_SELECTED];
-  openConfirm(`Se marcarán ${ids.length} bienes como ${revisado?'REVISADOS':'PENDIENTES'}. ¿Confirmar?`,async()=>{
-    try{
-      const r=await requestJSON('/api/bienes/revision',payload({ids,revisado}));
-      const fecha=new Date().toISOString();
-      for(const b of PRO_SEARCH_DATA.bienes)if(PRO_SELECTED.has(b.id)){b.revisado=revisado;b.revisionFecha=revisado?fecha:'';}
-      PRO_SELECTED.clear();closeModal();filterProAssets();toast(`${r.actualizados} bienes actualizados.`);
-    }catch(e){closeModal();toast(e.message);}
-  },revisado?'Confirmar revisión':'Marcar pendientes');
+async function proDeleteSelected(){
+ if(!IS_ADMIN){toast('Solo el administrador puede eliminar bienes.');return;}
+ const ids=[...PRO_SELECTED];
+ if(!ids.length){toast('Selecciona los bienes que deseas eliminar.');return;}
+ openConfirm(`¿Eliminar definitivamente ${ids.length} bienes seleccionados? Esta operación no se puede deshacer. Los QR de estos bienes dejarán de funcionar.`,async()=>{
+  const btn=document.getElementById('confirmActionBtn');
+  try{
+   let removed=0;
+   for(let i=0;i<ids.length;i+=25){
+    const result=await requestJSON('/api/bienes/eliminar',payload({ids:ids.slice(i,i+25)}));
+    removed+=result.eliminados;
+   }
+   closeModal();
+   PRO_SELECTED.clear();
+   toast(`${removed} bienes eliminados correctamente.`);
+   await renderAdvancedSearch(document.getElementById('app'));
+  }catch(e){
+   if(btn){btn.disabled=false;btn.textContent='Reintentar';}
+   toast('No se completó la eliminación: '+e.message+'. Actualiza el buscador antes de reintentar.');
+  }
+ },'Eliminar definitivamente');
 }
 function resetProFilters(){
   ['proQuery','proPerson','proMin','proMax','proFrom','proTo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
@@ -375,16 +387,16 @@ function showAssignedGoods(id){
 async function renderReportes(app){
   app.innerHTML='<div class="wrap inv-wrap"><div class="pro-empty">Preparando reportes…</div></div>';
   const d=await getProData();
-  const total=d.bienes.length,good=d.bienes.filter(x=>x.estadoBueno).length;
+  const total=d.bienes.length,good=d.bienes.filter(x=>!x.descargado).length;
   const amount=d.bienes.reduce((s,x)=>s+(Number(x.precio)||0),0);
   const groups=d.areas.map(a=>({...a,count:d.bienes.filter(b=>b.areaId===a.id).length})).sort((a,b)=>b.count-a.count).slice(0,8);
   const max=Math.max(1,...groups.map(g=>g.count));
   let audit=[];
   try{const a=await requestJSON('/api/audit');audit=a.events.slice(0,7);}catch(e){console.warn(e);}
   app.innerHTML=`<div class="wrap inv-wrap"><div class="pro-pagehead"><div><div class="pro-kicker">DATOS Y DOCUMENTOS</div><h1>Reportes y análisis</h1><p class="pro-subtitle">Resumen del inventario, descarga documental y movimientos recientes.</p></div><div class="pro-pageactions"><button class="btn secondary" onclick="exportGeneralExcel()">↓ Excel</button><button class="btn" onclick="exportGeneralWord()">↓ Word</button></div></div>
-    <div class="pro-stat-grid"><div class="pro-stat"><div class="pro-stat-top">Bienes <span class="pro-stat-icon">▣</span></div><div class="pro-stat-value">${total}</div></div><div class="pro-stat"><div class="pro-stat-top">Buen estado <span class="pro-stat-icon">✓</span></div><div class="pro-stat-value">${good}</div></div><div class="pro-stat"><div class="pro-stat-top">Por revisar <span class="pro-stat-icon">!</span></div><div class="pro-stat-value">${total-good}</div></div><div class="pro-stat"><div class="pro-stat-top">Valor registrado <span class="pro-stat-icon">L</span></div><div class="pro-stat-value" style="font-size:23px">L ${amount.toLocaleString('es-HN',{maximumFractionDigits:0})}</div></div></div>
+    <div class="pro-stat-grid"><div class="pro-stat"><div class="pro-stat-top">Bienes <span class="pro-stat-icon">▣</span></div><div class="pro-stat-value">${total}</div></div><div class="pro-stat"><div class="pro-stat-top">Activos <span class="pro-stat-icon">✓</span></div><div class="pro-stat-value">${good}</div></div><div class="pro-stat"><div class="pro-stat-top">Descargados <span class="pro-stat-icon">↘</span></div><div class="pro-stat-value">${d.bienes.filter(x=>x.descargado).length}</div></div><div class="pro-stat"><div class="pro-stat-top">Valor registrado <span class="pro-stat-icon">L</span></div><div class="pro-stat-value" style="font-size:23px">L ${amount.toLocaleString('es-HN',{maximumFractionDigits:0})}</div></div></div>
     <div class="pro-columns"><section class="pro-panel"><div class="pro-panel-header"><div><h3>Distribución por área</h3><p>Bienes registrados por unidad hospitalaria</p></div></div>
-    ${groups.length?groups.map(g=>`<div style="margin:17px 0"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:8px"><span>${esc(g.nombre)}</span><b>${g.count}</b></div><div style="height:9px;border-radius:12px;background:#2c3b2e;overflow:hidden"><div style="height:100%;width:${Math.round(g.count/max*100)}%;background:linear-gradient(90deg,#579a23,#b5f64e);border-radius:12px"></div></div></div>`).join(''):'<div class="pro-empty">No hay áreas para mostrar.</div>'}
+    ${groups.length?groups.map(g=>`<div style="margin:17px 0"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:8px"><span>${esc(g.nombre)}</span><b>${g.count}</b></div><div style="height:9px;border-radius:12px;background:#e8eef5;overflow:hidden"><div style="height:100%;width:${Math.round(g.count/max*100)}%;background:linear-gradient(90deg,#087e79,#0c4674);border-radius:12px"></div></div></div>`).join(''):'<div class="pro-empty">No hay áreas para mostrar.</div>'}
     </section><section class="pro-panel"><div class="pro-panel-header"><div><h3>Actividad reciente</h3><p>Últimos movimientos registrados</p></div><button class="btn secondary small" onclick="openHistory()">Historial ↗</button></div>${audit.length?audit.map(a=>`<div class="pro-asset-item"><div class="asset-avatar">↻</div><div class="asset-details"><b>${esc(a.action)} · ${esc(a.collection||'')}</b><small>${esc(a.details||a.document_id||'')} · ${esc(a.date?.slice(0,16).replace('T',' ')||'')}</small></div></div>`).join(''):'<div class="pro-empty">Todavía no hay movimientos.</div>'}</section></div>
     <div class="pro-section-head"><div><h2>Exportaciones y seguridad</h2><p>Los archivos se generan desde tu base de datos</p></div></div><div class="row-actions"><button class="btn secondary" onclick="exportGeneralExcel()">Descargar inventario Excel</button><button class="btn secondary" onclick="exportGeneralWord()">Descargar inventario Word</button><button class="btn secondary" onclick="downloadBackup()">Descargar copia de seguridad</button><button class="btn secondary" onclick="openHistory()">Ver historial</button></div>
   </div>`;
@@ -392,7 +404,7 @@ async function renderReportes(app){
 
 
 
-/* NEXUS PRO 2.7: importador PDF de recibos SIAFI, vista previa y validación. */
+/* Bienes Nacionales 2.7: importador PDF de recibos SIAFI, vista previa y validación. */
 let NEXUS_PDF_FILE=null;
 let NEXUS_PDF_PLAN=null;
 async function nexusUploadPDF(endpoint,file){
@@ -449,7 +461,7 @@ async function nexusPDFPreview(){
     ${plan.externos?`<div class="nexus-import-alert">Atención: <b>${plan.externos} registro(s)</b> pertenece(n) a una institución distinta al Hospital Leonardo Martínez. Se apartarán para revisión, no se cargarán como bienes hospitalarios.</div>`:''}
     <div class="pro-muted" style="margin:8px 0">Oficinas del documento: ${Object.entries(plan.ubicaciones).map(([name,count])=>`${esc(name)} (${count})`).join(' · ')}</div>
     <div class="table-wrap pro-results-wrap"><table class="result-table"><thead><tr><th>Estado</th><th>Ficha</th><th>Número SIAFI</th><th>Descripción</th><th>Oficina original</th><th>Valor</th><th>Pág.</th></tr></thead><tbody>${rows.map(r=>`<tr><td><span class="asset-badge ${r.estadoImportacion==='nuevo'?'':'bad'}">${esc(({nuevo:'Nuevo',externo:'Otra entidad',pendiente:'Por verificar',conflicto:'Duplicado',ya_importado:'Ya registrado'})[r.estadoImportacion]||r.estadoImportacion)}</span></td><td>${esc(r.numeroFicha)}</td><td>${esc(r.numeroInventario)}</td><td>${esc(r.descripcion)}</td><td>${esc(r.oficinaOriginal)}</td><td>${r.precio===null?'—':'L '+Number(r.precio).toLocaleString('es-HN',{minimumFractionDigits:2})}</td><td>${r.paginaPDF}</td></tr>`).join('')}</tbody></table></div>
-    <p class="pro-muted">Se muestran 45 de ${plan.total} bienes. Los bienes válidos que se incorporen quedarán Revisados por su documento oficial; el estado físico seguirá pendiente de comprobación y no se marcará como «Bueno» automáticamente.</p>
+    <p class="pro-muted">Se muestran 45 de ${plan.total} bienes. Los bienes válidos se registrarán con su respaldo documental; el estado físico no se determinará automáticamente y no se marcará como «Bueno» automáticamente.</p>
     <div class="row-actions"><button class="btn" id="nexusPDFCommitBtn" ${plan.nuevos?'':'disabled'} onclick="nexusPDFCommit()">Confirmar e importar ${plan.nuevos} bienes</button><button class="btn secondary" onclick="nexusPDFPreview()">Volver a analizar</button></div>
     </section>`;
   }catch(e){container.innerHTML=`<section class="pro-panel"><div class="nexus-import-alert">${esc(e.message)}</div></section>`;toast(e.message);}
@@ -460,12 +472,12 @@ async function nexusPDFCommit(){
   try{
     const info=await nexusUploadPDF('/api/import/pdf/commit',NEXUS_PDF_FILE);
     NEXUS_PDF_PLAN=null;
-    document.getElementById('nexusPDFResult').innerHTML=`<section class="pro-panel"><h2>✓ Importación completada</h2><p class="pro-subtitle"><b>${info.importados}</b> bienes nuevos incorporados, <b>${info.yaImportados}</b> ya existentes, <b>${info.externos+info.conflictos+info.pendientes}</b> incidencias documentales/externalidades que requieren atención. Los bienes nuevos quedaron Revisados documentalmente.</p><div class="row-actions"><button class="btn" onclick="location.hash='#/buscar'">Consultar los bienes →</button><button class="btn secondary" onclick="downloadBackup()">Descargar respaldo</button><button class="btn secondary" onclick="renderImportPDF(document.getElementById('app'))">Importar otro PDF</button></div></section>`;
+    document.getElementById('nexusPDFResult').innerHTML=`<section class="pro-panel"><h2>✓ Importación completada</h2><p class="pro-subtitle"><b>${info.importados}</b> bienes nuevos incorporados, <b>${info.yaImportados}</b> ya existentes, <b>${info.externos+info.conflictos+info.pendientes}</b> incidencias documentales/externalidades que requieren atención. Los bienes nuevos conservaron su respaldo documental.</p><div class="row-actions"><button class="btn" onclick="location.hash='#/buscar'">Consultar los bienes →</button><button class="btn secondary" onclick="downloadBackup()">Descargar respaldo</button><button class="btn secondary" onclick="renderImportPDF(document.getElementById('app'))">Importar otro PDF</button></div></section>`;
     toast(info.importados+' bienes incorporados sin duplicar SIAFI.');
   }catch(e){toast(e.message);if(btn){btn.disabled=false;btn.textContent='Reintentar importación';}}
 }
 
-/* NEXUS PRO 2.2 — Excel institucional: vista previa e importación segura. */
+/* Bienes Nacionales 2.2 — Excel institucional: vista previa e importación segura. */
 let NEXUS_EXCEL_FILE=null;
 let NEXUS_EXCEL_PLAN=null;
 async function nexusUploadExcel(endpoint,file){
@@ -487,7 +499,7 @@ async function renderImportExcel(app){
       </section>
       <section class="pro-panel"><div class="pro-panel-header"><div><h3>Protección de registros</h3><p>Validación antes de guardar</p></div></div>
         <div class="nexus-import-steps"><div><b>01</b><span>Revisar hojas, columnas y responsables</span></div><div><b>02</b><span>Identificar números SIAFI repetidos</span></div><div><b>03</b><span>Confirmar la carga en una sola operación</span></div></div>
-        <p class="pro-muted">Los bienes sin un número válido reciben un código interno <b>PEND-</b>, claramente distinto del número SIAFI real. Nunca se borran ni modifican bienes existentes durante una importación. Los registros importados quedarán <b>Revisados documentalmente</b>, sin eliminar alertas por SIAFI faltante o duplicado.</p>
+        <p class="pro-muted">Los bienes sin un número válido reciben un código interno <b>PEND-</b>, claramente distinto del número SIAFI real. Nunca se borran ni modifican bienes existentes durante una importación. Los registros importados conservarán su <b>respaldo documental</b>, sin eliminar alertas por SIAFI faltante o duplicado.</p>
       </section>
     </div>
     <div id="nexusExcelResult" style="margin-top:22px"></div>
@@ -542,7 +554,7 @@ async function nexusLoadConflicts(){
 }
 
 
-/* NEXUS PRO · Parche 3.4: fotografías de celular optimizadas antes de enviarlas a D1.
+/* Bienes Nacionales · Parche 3.4: fotografías de celular optimizadas antes de enviarlas a D1.
    No cambia las rutas, la base, los permisos ni los bienes ya registrados.
    El servidor Cloudflare actual admite un máximo de 750 000 bytes por imagen. */
 (function(){
