@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>HLMV NEXUS PRO | Inventario Institucional</title>
-<meta name="theme-color" content="#0D150F">
+<title>Bienes Nacionales | Inventario HLMV</title>
+<meta name="theme-color" content="#ffffff">
 <meta name="application-name" content="Inventario HLMV">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -304,26 +304,27 @@ input[type=password],input[type=file]{max-width:100%}
 <script>
 /* Preferencias de visualización: sin acceso a datos del inventario. */
 try {
-  const v=JSON.parse(localStorage.getItem('hlmv_nexus_appearance_v1')||'{}');
+  const v=JSON.parse(localStorage.getItem('hlmv_bn_institucional_appearance_v1')||'{}');
   const allow=(key,options,defaultValue)=>options.includes(v[key])?v[key]:defaultValue;
   const root=document.documentElement;
-  root.dataset.theme=allow('theme',['dark','light'],'dark');
+  root.dataset.theme=allow('theme',['dark','light'],'light');
   root.dataset.nexusTheme=root.dataset.theme;
-  root.dataset.nexusAccent=allow('accent',['green','blue','purple','orange','cyan'],'green');
+  root.dataset.nexusAccent=allow('accent',['green','blue','purple','orange','cyan'],'blue');
   root.dataset.nexusText=allow('text',['normal','large'],'normal');
   root.dataset.nexusDensity=allow('density',['comfortable','compact'],'comfortable');
   root.dataset.nexusMenu=allow('menu',['expanded','compact'],'expanded');
-} catch(e){document.documentElement.setAttribute('data-theme','dark');}
+} catch(e){document.documentElement.setAttribute('data-theme','light');}
 </script>
 <link rel="stylesheet" href="/pro.css?v=3.2">
 <link rel="stylesheet" href="/customize.css?v=3.2">
 <link rel="stylesheet" href="/minimal.css?v=3.2">
+<link rel="stylesheet" href="/institucional.css?v=4.0">
 </head>
 <body class="pro-login">
 <div id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside id="shellSidebar" aria-label="Menú principal">
-  <div class="sidebar-head"><div class="sidebar-logo"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg></div><div class="sidebar-brand">HLMV NEXUS<span>INVENTARIO PRO · V3.2</span></div></div>
-  <div class="sidebar-label">ESPACIO DE TRABAJO</div>
+  <div class="sidebar-head"><div class="sidebar-logo"><img src="/icons/icon-192.png" alt="BN"></div><div class="sidebar-brand">Bienes Nacionales<span>INVENTARIO INSTITUCIONAL</span></div></div>
+  <div class="sidebar-label">NAVEGACIÓN</div>
   <div class="sidebar-group">
     <a class="side-link" data-route="inventario" href="#/inventario" onclick="closeSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Panel principal</span></a>
     <a class="side-link" data-route="buscar" href="#/buscar" onclick="closeSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg><span>Explorar bienes</span></a>
@@ -331,7 +332,7 @@ try {
     <a class="side-link" data-route="areas" href="#/areas" onclick="closeSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01"/></svg><span>Áreas del hospital</span></a>
     <a class="side-link" data-route="responsables" href="#/responsables" onclick="closeSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Responsables</span></a>
   </div>
-  <div class="sidebar-label">OPERACIONES</div>
+  <div class="sidebar-label">OPERACIONES Y REPORTES</div>
   <div class="sidebar-group">
     <a class="side-link" href="#/buscar" onclick="closeSidebar();setTimeout(()=>document.getElementById('proQuery')?.focus(),250)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Búsqueda avanzada</span></a>
     <a class="side-link nexus-side-import" data-route="importar" href="#/importar" onclick="closeSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></svg><span>＋ Agregar por Excel</span></a>
@@ -342,11 +343,12 @@ try {
     <button class="side-link nexus-side-customize" type="button" onclick="closeSidebar();nexusOpenAppearance()" title="Personalizar interfaz" aria-label="Personalizar interfaz"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4c0 2 1.5 3 4 3s4-1 4-3a4 4 0 0 0-4-4Z"/><path d="M4 14c4-2 12-2 16 0M5 18c4 4 10 4 14 0"/><circle cx="12" cy="16" r="2"/></svg><span>Personalizar interfaz</span></button>
     <a class="side-link" href="javascript:void(0)" onclick="closeSidebar();openToolsModal()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.8 2.8-.06-.06a1.7 1.7 0 0 0-1.9-.34 1.7 1.7 0 0 0-1 1.5V21H10v-.15a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.34l-.06.06-2.8-2.8.06-.06A1.7 1.7 0 0 0 4.65 15a1.7 1.7 0 0 0-1.5-1H3v-4h.15a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.8-2.8.06.06A1.7 1.7 0 0 0 9 4.65a1.7 1.7 0 0 0 1-1.5V3h4v.15a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.8 2.8-.06.06A1.7 1.7 0 0 0 19.35 9a1.7 1.7 0 0 0 1.5 1H21v4h-.15a1.7 1.7 0 0 0-1.45 1Z"/></svg><span>Herramientas</span></a>
   </div>
-  <div class="sidebar-bottom"><div class="sidebar-signal"><span class="signal-dot"></span><div><b>Modo local activo</b><span>Base de datos SQLite</span></div></div><div class="sidebar-foot">Hospital Leonardo Martínez Valenzuela<br>Bienes Nacionales · San Pedro Sula</div></div>
+  <div class="sidebar-bottom"><div class="sidebar-signal"><span class="signal-dot"></span><div><b>Inventario en línea</b><span>Cloudflare D1 · Datos compartidos</span></div></div><div class="sidebar-foot">Hospital Leonardo Martínez Valenzuela<br>Bienes Nacionales · San Pedro Sula</div></div>
 </aside>
+<div class="bn-gov-banner" aria-label="Identidad institucional"><img src="/icons/gobierno-salud.png" alt="Gobierno de la República de Honduras y Secretaría de Salud"><span class="bn-gov-divider" aria-hidden="true"></span><img class="bn-banner-mark" src="/icons/bn-logo.png" alt="BN"><div class="bn-gov-titles"><strong>Bienes Nacionales</strong><span>Hospital Leonardo Martínez Valenzuela</span></div></div>
 <header class="top"><div class="wrap">
   <button class="mobile-menu-button" type="button" aria-label="Abrir menú" onclick="toggleSidebar()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-  <div class="brand" onclick="location.hash='#/inventario'"><span class="brand-text">Hospital Leonardo Martínez Valenzuela <span style="color:#697f6f">/ Bienes Nacionales</span></span></div>
+  <div class="brand" onclick="location.hash='#/inventario'"><span class="brand-text">Bienes Nacionales <span class="bn-brand-muted">/ Gestión de inventario del HLMV</span></span></div>
   <button type="button" class="top-command" onclick="openCommandSearch()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Buscar bienes, responsables, SIAFI…</span><strong>Ctrl K</strong></button>
   <button type="button" class="nexus-top-import nexus-write-only btn" onclick="location.hash='#/importar-pdf'">▣ Agregar por PDF</button>
   <button class="nexus-top-customize" type="button" onclick="nexusOpenAppearance()" title="Personalizar colores y apariencia"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9c0-1.5-1.1-2.1-2.5-2.1h-1.2c-.9 0-1.5-.6-1.5-1.5V6.5C15.8 4.6 14.5 3 12 3Z"/><circle cx="7.5" cy="12" r="1"/><circle cx="10" cy="7.7" r="1"/><circle cx="15.3" cy="15.7" r="1"/></svg><span>Personalizar</span></button>
@@ -364,28 +366,14 @@ try {
 </main>
 <div id="modalRoot"></div>
 <div id="toastRoot"></div>
-<!-- NEXUS PRO 2.6 · Preferencias de apariencia guardadas SOLO en este navegador. -->
+<!-- Bienes Nacionales · Preferencias de apariencia guardadas SOLO en este navegador. -->
 <dialog id="nexusAppearanceDialog" class="nexus-appearance-dialog" aria-labelledby="nexusAppearanceHeading" aria-describedby="nexusAppearanceHelp">
   <div class="nexus-appearance-head">
-    <div><div class="nexus-small-overline">NEXUS PRO · V3.0</div><h2 id="nexusAppearanceHeading">Personalizar interfaz</h2><p id="nexusAppearanceHelp">Configura cómo quieres ver tu inventario. Los cambios no afectan los bienes ni la base de datos.</p></div>
+    <div><div class="nexus-small-overline">BIENES NACIONALES · INVENTARIO HLMV</div><h2 id="nexusAppearanceHeading">Personalizar interfaz</h2><p id="nexusAppearanceHelp">Configura cómo quieres ver tu inventario. Los cambios no afectan los bienes ni la base de datos.</p></div>
     <button class="nexus-appearance-close" type="button" onclick="nexusCancelAppearance()" aria-label="Cerrar sin guardar">✕</button>
   </div>
   <div class="nexus-appearance-content">
-    <fieldset class="nexus-setting"><legend>Modo de visualización</legend>
-      <div class="nexus-options" data-nexus-group="theme">
-        <button type="button" data-nexus-setting="theme" data-nexus-value="dark" aria-pressed="true"><span aria-hidden="true">☾</span> Oscuro</button>
-        <button type="button" data-nexus-setting="theme" data-nexus-value="light" aria-pressed="false"><span aria-hidden="true">☀</span> Claro</button>
-      </div>
-    </fieldset>
-    <fieldset class="nexus-setting"><legend>Color principal</legend>
-      <div class="nexus-colors" data-nexus-group="accent">
-        <button type="button" data-nexus-setting="accent" data-nexus-value="green" aria-label="Verde Xbox" aria-pressed="true"><span style="--swatch:#9bf00b"></span>Verde</button>
-        <button type="button" data-nexus-setting="accent" data-nexus-value="blue" aria-label="Azul" aria-pressed="false"><span style="--swatch:#55b7ff"></span>Azul</button>
-        <button type="button" data-nexus-setting="accent" data-nexus-value="purple" aria-label="Violeta" aria-pressed="false"><span style="--swatch:#c29aff"></span>Violeta</button>
-        <button type="button" data-nexus-setting="accent" data-nexus-value="orange" aria-label="Naranja" aria-pressed="false"><span style="--swatch:#ffaf69"></span>Naranja</button>
-        <button type="button" data-nexus-setting="accent" data-nexus-value="cyan" aria-label="Turquesa" aria-pressed="false"><span style="--swatch:#43e4d4"></span>Turquesa</button>
-      </div>
-    </fieldset>
+    <div class="bn-alert" style="background:#e8f4f6;border-color:#087e79;color:#315d73">Identidad institucional: fondo claro, azul marino y turquesa del logotipo BN. Personaliza el tamaño de texto y distribución.</div>
     <div class="nexus-two-settings">
       <fieldset class="nexus-setting"><legend>Tamaño de texto</legend>
         <div class="nexus-options" data-nexus-group="text">
@@ -409,7 +397,7 @@ try {
     <div class="nexus-appearance-note"><span aria-hidden="true">ⓘ</span> Las preferencias se guardan en esta PC y navegador; no se sincronizan entre dispositivos. Cambiar de tema no modifica tus bienes, los QR ni los archivos importados.</div>
   </div>
   <div class="nexus-appearance-actions">
-    <button type="button" class="nexus-reset-btn" onclick="nexusResetAppearance()">Restablecer diseño Xbox</button>
+    <button type="button" class="nexus-reset-btn" onclick="nexusResetAppearance()">Restablecer diseño institucional</button>
     <div class="nexus-appearance-action-right"><button type="button" class="nexus-cancel-btn" onclick="nexusCancelAppearance()">Cancelar</button><button type="button" class="nexus-save-btn" onclick="nexusSaveAppearance()">Guardar apariencia</button></div>
   </div>
 </dialog>
@@ -580,15 +568,27 @@ function triggerDownload(filename,blob){
 }
 async function downloadFromServer(url,filename){
   try{
-    const r=await fetch(url,{credentials:'same-origin'});
-    if(!r.ok){const msg=await r.json().catch(()=>({}));throw Error(msg.error||'No se pudo exportar.');}
-    triggerDownload(filename,await r.blob());toast('Archivo generado.');
-  }catch(e){toast(e.message);}
+    // Las descargas nativas funcionan mejor en iPhone y Android que los Blob asíncronos.
+    // La ruta /api/export responde con Content-Disposition: attachment.
+    if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
+      window.location.assign(url);
+      return;
+    }
+    const response=await fetch(url,{credentials:'same-origin',cache:'no-store'});
+    if(!response.ok){const msg=await response.json().catch(()=>({}));throw Error(msg.error||`Error HTTP ${response.status} al generar el reporte.`);}
+    const blob=await response.blob();
+    if(!blob.size)throw Error('El servidor devolvió un archivo vacío.');
+    triggerDownload(filename,new Blob([blob],{type:response.headers.get('content-type')||blob.type||'application/octet-stream'}));
+    toast('Descarga solicitada: '+filename);
+  }catch(e){
+    toast('No se pudo descargar: '+e.message);
+    console.error('NEXUS EXPORT ERROR',e);
+  }
 }
 function openToolsModal(){
   openModal(`<h3>Herramientas del sistema</h3>
     <p class="tool-note">Los dispositivos conectados consultan la misma base SQLite del servidor. Sin conexión al servidor no es posible ver ni editar registros.</p>
-    <p class="tool-note">Base de datos SQLite local. Realiza respaldos regularmente y guárdalos en una USB o unidad segura distinta de esta computadora.</p>
+    <p class="tool-note">Base de datos en línea Cloudflare D1. Realiza respaldos periódicos en una ubicación institucional autorizada, fuera del repositorio GitHub.</p>
     <div class="tool-list">
       ${IS_ADMIN?'<button class="btn secondary" onclick="downloadBackup()">Descargar respaldo completo (.zip)</button>':''}
       ${IS_ADMIN?'<button class="btn secondary" onclick="openRestore()">Importar respaldo anterior</button>':''}
@@ -1001,43 +1001,54 @@ async function saveDescripcion(){
 
 // ---------- INVENTARIO · HOME ----------
 async function renderInventarioHome(app){
-  app.innerHTML = '<div class="wrap inv-wrap"><div class="pro-empty">Preparando panel de control…</div></div>';
-  const [areas,bienes,empleados] = await Promise.all([fetchAreas(),fetchAllBienes(),DB.collection('empleados').get()]);
-  const good=bienes.filter(b=>b.estadoBueno).length;
-  const bad=bienes.length-good;
-  const assigned=bienes.filter(b=>b.personaTipo).length;
+  app.innerHTML='<div class="wrap inv-wrap"><div class="pro-empty">Cargando panel de Bienes Nacionales…</div></div>';
+  const [areas,bienes,empleados]=await Promise.all([fetchAreas(),fetchAllBienes(),DB.collection('empleados').get()]);
+  const activos=bienes.filter(b=>!b.descargado);
+  const descargados=bienes.filter(b=>b.descargado);
+  const responsables=new Set([...areas.filter(a=>a.jefeNombre).map(a=>a.jefePersonaId||a.jefeNombre.toLowerCase()),...empleados.docs.map(p=>p.id)]);
   const areaById=Object.fromEntries(areas.map(a=>[a.id,a]));
-  const typeGroups=proObjectGroups(bienes).slice(0,6);
-  const recent=[...bienes].sort((a,b)=>String(b.creadoEn||'').localeCompare(String(a.creadoEn||''))).slice(0,5);
-  const areaCounts=Object.fromEntries(areas.map(a=>[a.id,0]));
-  bienes.forEach(b=>{areaCounts[b.areaId]=(areaCounts[b.areaId]||0)+1;});
-  areas.forEach(a=>{a.bienCount=areaCounts[a.id]||0;a.empCount=empleados.docs.filter(e=>e.data().areaId===a.id).length;});
-  app.innerHTML=`<div class="wrap inv-wrap">
-    <div class="pro-pagehead"><div><div class="pro-kicker">BIENES NACIONALES · HLMV</div><h1>Panel de inventario</h1><p class="pro-subtitle">Administra, localiza y controla los bienes del hospital desde un solo lugar.</p></div><div class="pro-pageactions"><button class="btn secondary" onclick="openQRScanner()">Escanear QR</button><button class="btn secondary" onclick="location.hash='#/objetos'">Tipos de bienes</button><button class="btn secondary" onclick="location.hash='#/importar'" ${IS_OWNER?'':'disabled'}>Importar Excel</button><button class="btn" onclick="createAssetFlow()" ${IS_OWNER?'':'disabled'}>+ Registrar bien</button></div></div>
-    <div class="pro-stat-grid">
-      <div class="pro-stat"><div class="pro-stat-top">Total de bienes <span class="pro-stat-icon">▣</span></div><div class="pro-stat-value">${bienes.length.toLocaleString('es-HN')}</div><div class="pro-stat-note">Registros institucionales</div></div>
-      <div class="pro-stat"><div class="pro-stat-top">Áreas registradas <span class="pro-stat-icon">⌂</span></div><div class="pro-stat-value">${areas.length}</div><div class="pro-stat-note">Ubicaciones del hospital</div></div>
-      <div class="pro-stat"><div class="pro-stat-top">Responsables <span class="pro-stat-icon">♙</span></div><div class="pro-stat-value">${empleados.docs.length}</div><div class="pro-stat-note">Empleados registrados</div></div>
-      <div class="pro-stat"><div class="pro-stat-top">Bienes en buen estado <span class="pro-stat-icon">✓</span></div><div class="pro-stat-value">${good}</div><div class="pro-stat-note">${bad} pendientes de revisión</div></div>
-    </div>
-    <div class="pro-columns">
-      <section class="pro-panel"><div class="pro-panel-header"><div><h3>Bienes recientes</h3><p>Últimos registros incorporados</p></div><a class="pro-link" href="#/buscar">Ver todos ↗</a></div>
-      ${recent.length?recent.map(b=>`<a class="pro-asset-item" href="#/bien/${encodeURIComponent(b.numeroInventario)}"><div class="asset-avatar">▣</div><div class="asset-details"><b>${esc(b.descripcion)}</b><small>${esc(b.numeroInventario)} · ${esc(areaById[b.areaId]?.nombre||'Área sin definir')}</small></div><span class="asset-badge ${b.estadoBueno?'':'bad'}">${b.estadoBueno?'Bueno':'Revisar'}</span></a>`).join(''):'<div class="pro-empty">Todavía no hay bienes registrados. Selecciona «Registrar bien» para comenzar.</div>'}
-      </section>
-      <section class="pro-panel"><div class="pro-panel-header"><div><h3>Acceso rápido</h3><p>Herramientas del día a día</p></div></div><div class="pro-quick-grid"><button class="pro-quick" onclick="createAssetFlow()" ${IS_OWNER?'':'disabled'}><span>＋</span>Nuevo bien</button><button class="pro-quick" onclick="location.hash='#/importar'" ${IS_OWNER?'':'disabled'}><span>⇧</span>Importar Excel</button><button class="pro-quick" onclick="openQRScanner()"><span>▦</span>Leer QR</button><button class="pro-quick" onclick="location.hash='#/objetos'"><span>▦</span>Tipos de bienes</button><button class="pro-quick" onclick="location.hash='#/responsables'"><span>♙</span>Responsables</button><button class="pro-quick" onclick="location.hash='#/reportes'"><span>▥</span>Reportes</button></div><p class="pro-muted" style="margin:18px 0 0">${assigned} de ${bienes.length} bienes con responsable asignado.</p></section>
-    </div>
-    <div class="pro-section-head"><div><h2>Bienes agrupados por tipo de objeto</h2><p>Consulta los bienes agrupados por nombre</p></div><a href="#/objetos" class="pro-link">Ver todos los tipos ↗</a></div>
-    ${typeGroups.length ? `<div class="pro-type-preview-grid">${typeGroups.map(g=>`<button class="pro-type-preview" onclick="proOpenObjectGroup('${esc(g.key)}')"><strong>${esc(g.name)}</strong><span>${g.bienes.length} bienes</span></button>`).join('')}</div>` : '<div class="pro-empty">Los tipos de bienes aparecerán cuando agregues tu primer registro.</div>'}
-    <div class="pro-section-head"><div><h2>Áreas del hospital</h2><p>Accede directamente a cada unidad</p></div><a href="#/areas" class="pro-link">Ver áreas ↗</a></div>
-    ${areas.length?`<div class="pro-area-tiles">${areas.slice(0,6).map(a=>areaCardHtml(a)).join('')}</div>`:'<div class="pro-empty">No hay áreas todavía. <button class="btn secondary small" onclick="openAreaForm()">Crear primera área</button></div>'}
-    <div class="pro-section-head"><div><h2>Gestión documental</h2><p>Descarga reportes y crea respaldos verificables</p></div></div>
-    <div class="row-actions"><button class="btn secondary" onclick="exportGeneralExcel()">↓ Exportar Excel</button><button class="btn secondary" onclick="exportGeneralWord()">↓ Exportar Word</button><button class="btn secondary" onclick="downloadBackup()">↓ Respaldo completo</button></div>
+  const empById=Object.fromEntries(empleados.docs.map(p=>[p.id,p.data()]));
+  const recent=[...bienes].sort((x,y)=>String(y.creadoEn||'').localeCompare(String(x.creadoEn||''))).slice(0,6);
+  const status=b=>b.descargado?'<span class="bn-status out">Descargado</span>':'<span class="bn-status active">Activo</span>';
+  const person=b=>b.personaTipo==='jefe'?areaById[b.areaId]?.jefeNombre:b.personaTipo==='empleado'?empById[b.personaId]?.nombre:'';
+  app.innerHTML=`<div class="wrap inv-wrap bn-home">
+   <div class="bn-welcome"><div><p class="bn-overline">HOSPITAL LEONARDO MARTÍNEZ VALENZUELA · INVENTARIO INSTITUCIONAL</p><h1>Bienes Nacionales</h1><p class="pro-subtitle">Sistema de gestión, control y consulta de bienes del hospital.</p></div><a class="bn-home-area-link" href="#/areas">▦ Áreas del hospital ↗</a></div>
+   <div class="pro-stat-grid bn-stats">
+     <div class="pro-stat"><div class="pro-stat-top">Total de bienes <span class="pro-stat-icon">▣</span></div><div class="pro-stat-value">${bienes.length.toLocaleString('es-HN')}</div><div class="pro-stat-note">Registros de inventario</div></div>
+     <div class="pro-stat"><div class="pro-stat-top">Áreas registradas <span class="pro-stat-icon">▥</span></div><div class="pro-stat-value">${areas.length}</div><div class="pro-stat-note">Áreas y unidades del hospital</div></div>
+     <div class="pro-stat"><div class="pro-stat-top">Responsables <span class="pro-stat-icon">♙</span></div><div class="pro-stat-value">${responsables.size}</div><div class="pro-stat-note">Personas vinculadas</div></div>
+     <div class="pro-stat"><div class="pro-stat-top">Bienes descargados <span class="pro-stat-icon">↘</span></div><div class="pro-stat-value">${descargados.length}</div><div class="pro-stat-note">Fuera de servicio · ${activos.length} activos</div></div>
+   </div>
+   <section class="bn-actions pro-panel"><div class="pro-panel-header"><div><h2>Acciones de inventario</h2><p>Accede a las funciones principales</p></div></div>
+     <div class="bn-searchbox"><label class="pro-sr-only" for="bnQuickSearch">Buscar bienes por código, descripción o serie</label><input id="bnQuickSearch" type="search" placeholder="Buscar bienes por código, descripción, serie, área…" onkeydown="if(event.key==='Enter')buscarBienDesdeHome()"><button class="btn" type="button" onclick="buscarBienDesdeHome()">Buscar bienes</button></div>
+     <div class="bn-action-grid">
+       ${IS_OWNER?'<button class="bn-action primary" onclick="createAssetFlow()">＋<span>Registrar bien</span></button>':''}
+       ${IS_OWNER?'<a class="bn-action" href="#/importar">⇧<span>Importar Excel</span></a>':''}
+       ${IS_OWNER?'<a class="bn-action" href="#/importar-pdf">▤<span>Agregar PDF SIAFI</span></a>':''}
+       <button class="bn-action" onclick="exportGeneralExcel()">↓<span>Exportar Excel</span></button>
+       <button class="bn-action" onclick="exportGeneralWord()">⇩<span>Exportar Word</span></button>
+       <button class="bn-action" onclick="openQRScanner()">▦<span>Escanear QR</span></button>
+       <button class="bn-action" onclick="location.hash='#/areas'">▥<span>Áreas</span></button>
+       <button class="bn-action" onclick="location.hash='#/objetos'">◈<span>Tipos de bienes</span></button>
+       ${IS_ADMIN?'<a class="bn-action danger" href="#/buscar">↘<span>Realizar descargo</span></a>':''}
+       ${IS_ADMIN?'<a class="bn-action" href="#/usuarios">♙<span>Usuarios y permisos</span></a>':''}
+     </div>
+   </section>
+   <div class="pro-columns bn-home-columns">
+    <section class="pro-panel"><div class="pro-panel-header"><div><h2>Bienes recientes</h2><p>Últimos registros incorporados</p></div><a href="#/buscar" class="pro-link">Ver inventario ↗</a></div>
+      ${recent.length?`<div class="table-wrap"><table class="bn-recent"><thead><tr><th>Inventario</th><th>Descripción</th><th>Área</th><th>Responsable</th><th>Situación</th></tr></thead><tbody>${recent.map(b=>`<tr><td><a href="#/bien/${encodeURIComponent(b.numeroInventario)}">${esc(b.numeroInventario)}</a></td><td>${esc(b.descripcion)}</td><td>${esc(areaById[b.areaId]?.nombre||'—')}</td><td>${esc(person(b)||'Sin asignar')}</td><td>${status(b)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="pro-empty">Todavía no hay bienes registrados. Puedes empezar con Registrar bien o Importar Excel.</p>'}
+    </section>
+    <section class="pro-panel"><div class="pro-panel-header"><div><h2>Accesos rápidos</h2><p>Catálogos y administración</p></div></div>
+      <div class="bn-quicklinks"><a href="#/areas">Áreas del hospital ↗</a><a href="#/responsables">Responsables ↗</a><a href="#/objetos">Tipos de bienes ↗</a><a href="#/reportes">Reportes y análisis ↗</a>${IS_ADMIN?'<a href="#/usuarios">Usuarios y permisos ↗</a>':''}<a href="#/buscar">Explorar todos los bienes ↗</a></div>
+      <p class="bn-qr-note">Los códigos QR públicos permiten consultar datos del bien y su responsable sin iniciar sesión, pero no editarlos.</p>
+    </section>
+   </div>
+   <div class="pro-section-head"><div><h2>Áreas</h2><p>Acceso directo a las unidades registradas</p></div><a href="#/areas" class="pro-link">Ver todas las áreas ↗</a></div>
+   ${areas.length?`<div class="pro-area-tiles">${areas.slice(0,6).map(a=>areaCardHtml({...a,bienCount:bienes.filter(b=>b.areaId===a.id).length})).join('')}</div>`:`<section class="pro-panel"><p class="pro-muted">Todavía no hay áreas registradas.</p>${IS_OWNER?'<button class="btn" onclick="openAreaForm()">＋ Crear primera área</button>':''}</section>`}
   </div>`;
 }
-function goSearch(){
-  const v = document.getElementById('homeSearch').value.trim();
-  if(v) location.hash = '#/bien/' + encodeURIComponent(v);
-}
+
+function buscarBienDesdeHome(){const text=document.getElementById('bnQuickSearch')?.value?.trim()||'';window.__proSearchTerm=text;location.hash='#/buscar';if(location.hash==='#/buscar')setTimeout(()=>filterProAssets(),300);}
 function areaCardHtml(a){
   return `<div class="area-card" onclick="location.hash='#/area/${a.id}'">
     <h3>${esc(a.nombre)}</h3>
@@ -1125,12 +1136,10 @@ async function renderAreaDetail(app, areaId){
     </div>
     ${IS_OWNER && bienes.length ? `<div class="bulk-bar" id="bulkBar">
       <span id="bulkCount"></span>
-      <button class="btn small" onclick="bulkReviewArea(true)">✓ Marcar revisados</button>
-      <button class="btn secondary small" onclick="bulkReviewArea(false)">Marcar pendientes</button>
       ${IS_ADMIN?`<button class="btn danger-solid small" onclick="bulkDeleteBienes('${area.id}')">Eliminar seleccionados</button>`:''}
       <button class="btn secondary small" onclick="toggleAllBienChk(false)">Cancelar selección</button>
     </div>` : ''}
-    ${bienes.length ? `<div class="table-wrap"><table><thead><tr>${IS_OWNER?'<th class="chk-col"><input type="checkbox" onchange="toggleAllBienChk(this.checked)" aria-label="Seleccionar todos"></th>':''}<th></th><th>N.º inventario</th><th>Descripción</th><th>Estado físico</th><th>Revisión</th><th>A cargo de</th><th></th></tr></thead><tbody>
+    ${bienes.length ? `<div class="table-wrap"><table><thead><tr>${IS_OWNER?'<th class="chk-col"><input type="checkbox" onchange="toggleAllBienChk(this.checked)" aria-label="Seleccionar todos"></th>':''}<th></th><th>N.º inventario</th><th>Descripción</th><th>Estado físico</th><th>Situación</th><th>A cargo de</th><th></th></tr></thead><tbody>
       ${bienes.map(b=>bienRowHtml(b, area, empleados)).join('')}
     </tbody></table></div>` : '<div class="empty">Aún no hay bienes registrados en esta área.</div>'}
     ${bienes.length ? `<div class="row-actions" style="margin-top:12px;">
@@ -1147,11 +1156,11 @@ function bienRowHtml(b, area, empleados){
     <td><a href="#/bien/${encodeURIComponent(b.numeroInventario)}">${esc(b.numeroInventario)}</a></td>
     <td>${esc(b.descripcion)}</td>
     <td>${estadoCheckHtml(b)}</td>
-    <td><span class="asset-badge ${b.revisado?'':'bad'}">${b.revisado?'✓ Revisado':'Pendiente'}</span></td>
+    <td><span class="bn-status ${b.descargado?'out':'active'}">${b.descargado?'Descargado':'Activo'}</span></td>
     <td>${personaLabel(area, empleados, b)}</td>
     <td class="row-actions">
       <a class="btn secondary small" href="#/bien/${encodeURIComponent(b.numeroInventario)}">Ver ficha</a>
-      ${IS_OWNER?`<button class="btn secondary small" onclick="openBienEditById('${b.id}')">Editar</button>${IS_ADMIN?`<button class="btn danger small" onclick="confirmDeleteBien('${b.id}','${area.id}')">Eliminar</button>`:''}`:''}
+      ${IS_OWNER?`<button class="btn secondary small" onclick="openBienEditById('${b.id}')">Editar</button>${IS_ADMIN?`<button class="btn secondary small" onclick="bnOpenDescargo('${b.id}')">${b.descargado?'Reactivar':'Descargar'}</button><button class="btn danger small" onclick="confirmDeleteBien('${b.id}','${area.id}')">Eliminar</button>`:''}`:''}
     </td>
   </tr>`;
 }
@@ -1170,37 +1179,27 @@ function updateBulkBar(){
     bar.style.display = 'none';
   }
 }
-function bulkReviewArea(revisado){
-  const ids=Array.from(document.querySelectorAll('.bienChk:checked')).map(x=>x.value);
-  if(!ids.length){toast('Selecciona los bienes que quieres revisar.');return;}
-  openConfirm(`¿Marcar ${ids.length} bienes como ${revisado?'REVISADOS':'PENDIENTES'}?`,async()=>{
-    try{await requestJSON('/api/bienes/revision',payload({ids,revisado}));closeModal();toast(`${ids.length} bienes actualizados.`);render();}
-    catch(e){closeModal();toast(e.message);}
-  },'Confirmar revisión');
-}
 async function bulkDeleteBienes(areaId){
-  const ids = Array.from(document.querySelectorAll('.bienChk:checked')).map(c=>c.value);
-  if(!ids.length) return;
-  openConfirm(
-    `Se eliminarán ${ids.length} ${ids.length===1?'bien':'bienes'} del inventario de forma permanente. Esta acción no se puede deshacer.`,
-    async ()=>{
-      try{
-        await Promise.all(ids.map(id=>DB.doc('bienes/'+id).delete()));
-        closeModal(); toast('Bienes eliminados.'); render();
-      }catch(e){ closeModal(); toast('No se pudieron eliminar todos los bienes. Verifica tus permisos.'); }
-    },
-    'Eliminar ' + ids.length + (ids.length===1?' bien':' bienes')
-  );
+  if(!IS_ADMIN){toast('Solo el administrador puede eliminar bienes.');return;}
+  const ids=Array.from(document.querySelectorAll('.bienChk:checked')).map(c=>c.value);
+  if(!ids.length){toast('Selecciona uno o varios bienes.');return;}
+  openConfirm(`¿Eliminar definitivamente ${ids.length} bienes de esta área? Los enlaces QR de los bienes eliminados dejarán de funcionar.`,async()=>{
+    const btn=document.getElementById('confirmActionBtn');
+    try{
+      let total=0;
+      for(let i=0;i<ids.length;i+=25){
+        const result=await requestJSON('/api/bienes/eliminar',payload({ids:ids.slice(i,i+25)}));
+        total+=result.eliminados;
+      }
+      closeModal();toast(`${total} bienes eliminados.`);await render();
+    }catch(e){if(btn){btn.disabled=false;btn.textContent='Reintentar';}toast('No se pudo completar la eliminación: '+e.message);}
+  },`Eliminar ${ids.length} bienes`);
 }
 function estadoCheckHtml(b){
-  const checked = b.estadoBueno ? 'checked' : '';
-  if(IS_OWNER){
-    return `<label class="field-check" style="display:inline-flex;">
-      <input type="checkbox" ${checked} onchange="toggleEstado('${b.id}', this.checked)">
-      <span class="badge ${b.estadoBueno?'ok':'bad'}">${b.estadoBueno?'Buen estado':'Requiere revisión'}</span>
-    </label>`;
-  }
-  return `<span class="badge ${b.estadoBueno?'ok':'bad'}">${b.estadoBueno?'Buen estado':'Requiere revisión'}</span>`;
+  if(b.descargado)return '<span class="bn-status out">Fuera de servicio</span>';
+  const checked=b.estadoBueno?'checked':'';
+  if(IS_OWNER)return `<label class="field-check" style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" ${checked} onchange="toggleEstado('${b.id}',this.checked)"><span class="badge ${b.estadoBueno?'ok':''}">${b.estadoBueno?'Funciona':'Estado sin confirmar'}</span></label>`;
+  return `<span class="badge ${b.estadoBueno?'ok':''}">${b.estadoBueno?'Funciona':'Estado sin confirmar'}</span>`;
 }
 async function toggleEstado(bienId, checked){
   try{ await DB.doc('bienes/'+bienId).update({estadoBueno: checked}); toast('Estado actualizado.'); render(); }
@@ -1388,8 +1387,9 @@ async function renderBienFicha(app, numero){
             <div>Color</div><div>${bien.color?esc(bien.color):'—'}</div>
             <div>Valor registrado</div><div>${bien.precio ? 'L '+Number(bien.precio).toLocaleString('es-HN',{minimumFractionDigits:2}) : '—'}</div>
             <div>Fecha de adquisición</div><div>${bien.fechaAdquisicion?esc(bien.fechaAdquisicion):'—'}</div>
-            <div>Estado</div><div>${estadoCheckHtml(bien)}</div>
-            <div>Revisión de inventario</div><div><span class="badge ${bien.revisado?'ok':'bad'}">${bien.revisado?'✓ Revisado':'Pendiente'}</span>${bien.revisionFecha?' · '+esc(new Date(bien.revisionFecha).toLocaleString('es-HN')):''}${bien.revisionOrigen?' · '+esc(bien.revisionOrigen):''}</div>
+            <div>Estado físico</div><div>${estadoCheckHtml(bien)}</div>
+            <div>Situación</div><div><span class="bn-status ${bien.descargado?'out':'active'}">${bien.descargado?'Descargado · Fuera de servicio':'Activo'}</span></div>
+            ${bien.descargado?`<div>Fecha de descargo</div><div>${esc(bien.fechaDescargo?.slice(0,10)||'—')}</div><div>Motivo del descargo</div><div>${esc(bien.motivoDescargo||'—')}</div><div>Documento / referencia</div><div>${esc(bien.referenciaDescargo||'Sin referencia')}</div>`:''}
             ${bien.estadoOriginal?`<div>Estado físico en origen</div><div>${esc(bien.estadoOriginal)}</div>`:''}
             ${bien.fuenteImportacionPDF?`<div>Documento PDF SIAFI</div><div>${esc(bien.fuenteImportacionPDF)} · página ${esc(bien.paginaPDF||'—')}</div>
             <div>Oficina original SIAFI</div><div>${esc(bien.ubicacionSiafi||'—')}</div>
@@ -1403,6 +1403,7 @@ async function renderBienFicha(app, numero){
           </div>
           ${IS_OWNER?`<div class="row-actions" style="margin-top:18px;">
             <button class="btn secondary small" onclick="openBienEditById('${bien.id}')">Editar bien</button>
+            ${IS_ADMIN?`<button class="btn ${bien.descargado?'secondary':'bn-discharge'} small" onclick="bnOpenDescargo('${bien.id}')">${bien.descargado?'Reactivar bien':'↘ Registrar descargo'}</button>`:''}
             ${IS_ADMIN?`<button class="btn danger small" onclick="confirmDeleteBien('${bien.id}', '${area?area.id:''}')">Eliminar bien</button>`:''}
           </div>`:''}
         </div>
@@ -1451,7 +1452,7 @@ async function openBienEditById(id){
     ...empleados.map(e=>`<option value="emp:${e.id}" ${bien.personaTipo==='empleado'&&bien.personaId===e.id?'selected':''}>${esc(e.nombre)}</option>`)
   ].join('');
   openModal(`
-    <h3>Editar bien</h3>
+    <h3>Editar bien</h3>${bien.descargado?'<p class="bn-alert">Este bien figura descargado. Solo administración puede modificarlo o reactivarlo.</p>':''}
     <div class="field"><label>Número de inventario</label><input type="text" id="fNumInvEdit" value="${esc(bien.numeroInventario)}" ${bien.sinSIAFI?'':'disabled style="opacity:.55;"'}></div>
     ${bien.sinSIAFI?'<p class="tool-note">Este bien no tiene número SIAFI confirmado. Cuando lo verifiques, escribe aquí el número real para reemplazar el identificador provisional PEND-.</p>':''}
     <div class="field"><label>Descripción del bien</label><input id="fDescBien" type="text" value="${esc(bien.descripcion)}"></div>
@@ -1507,7 +1508,34 @@ async function updateBien(id){
   }catch(e){ toast('No se pudo actualizar el bien.'); }
 }
 
-// ---------- Exportación Excel / Word, sin internet ----------
+// ---------- Descargo interno de bienes: no elimina registro ni QR ----------
+async function bnOpenDescargo(id){
+  if(!IS_ADMIN){toast('Solo administración puede registrar un descargo.');return;}
+  const snap=await DB.doc('bienes/'+id).get();
+  if(!snap.exists){toast('Bien no encontrado. Actualiza la página.');return;}
+  const b={id,...snap.data()},reactivar=!!b.descargado;
+  window.__bnDescargo={id,reactivar};
+  openModal(`<h3>${reactivar?'Reactivar bien':'Registrar descargo del bien'}</h3>
+    <p class="pro-muted"><b>${esc(b.numeroInventario)}</b> · ${esc(b.descripcion)}</p>
+    <p class="bn-alert">${reactivar?'La reactivación dejará constancia en el historial.':'El descargo identifica un bien fuera de servicio. Se conserva su ficha, responsable, QR e historial. Esta acción interna no sustituye el descargo oficial en SIAFI ni un acta administrativa.'}</p>
+    <div class="field"><label for="bnDescargoMotivo">${reactivar?'Motivo de reactivación':'Motivo de descargo'} *</label><textarea id="bnDescargoMotivo" rows="3" maxlength="500" placeholder="${reactivar?'Ej. Equipo reparado y autorizado para volver al servicio':'Ej. Equipo fuera de servicio, no funciona'}">${reactivar?'':'Equipo fuera de servicio; no funciona'}</textarea></div>
+    <div class="field"><label for="bnDescargoReferencia">N.º de acta, oficio o constancia (si existe)</label><input id="bnDescargoReferencia" type="text" maxlength="120" placeholder="Referencia documental opcional"></div>
+    <div class="modal-actions"><button class="btn secondary" onclick="closeModal()">Cancelar</button><button class="btn ${reactivar?'':'danger'}" id="bnDescargoSubmit" onclick="bnConfirmDescargo()">${reactivar?'Confirmar reactivación':'Confirmar descargo'}</button></div>`);
+}
+async function bnConfirmDescargo(){
+  const ctx=window.__bnDescargo;if(!ctx||!IS_ADMIN)return;
+  const motivo=document.getElementById('bnDescargoMotivo')?.value.trim()||'';
+  const referencia=document.getElementById('bnDescargoReferencia')?.value.trim()||'';
+  if(motivo.length<8){toast('Debes indicar el motivo, mínimo 8 caracteres.');return;}
+  const btn=document.getElementById('bnDescargoSubmit');if(btn){btn.disabled=true;btn.textContent='Guardando movimiento…';}
+  try{
+    const r=await requestJSON('/api/bienes/descargo',payload({id:ctx.id,accion:ctx.reactivar?'reactivar':'descargar',motivo,referencia}));
+    closeModal();toast(r.descargado?'Bien descargado. Ficha conservada.':'Bien reactivado. Movimiento registrado.');
+    PRO_SELECTED?.clear?.();await render();
+  }catch(e){if(btn){btn.disabled=false;btn.textContent='Reintentar';}toast(e.message||'No se pudo guardar el descargo.');}
+}
+
+// ---------- Exportación Excel / Word desde el servidor Cloudflare D1 ----------
 async function exportAreaExcel(areaId){return downloadFromServer('/api/export?format=xlsx&areaId='+encodeURIComponent(areaId),'inventario-area-hlmv.xlsx');}
 async function exportAreaWord(areaId){return downloadFromServer('/api/export?format=docx&areaId='+encodeURIComponent(areaId),'inventario-area-hlmv.docx');}
 async function exportGeneralExcel(){return downloadFromServer('/api/export?format=xlsx','inventario-hospital-completo.xlsx');}
@@ -1522,7 +1550,7 @@ async function exportGeneralWord(){return downloadFromServer('/api/export?format
   render();
 })();
 </script>
-<script src="/pro.js?v=3.2"></script>
-<script src="/customize.js?v=3.2"></script>
+<script src="/pro.js?v=4.0-institucional-descargo"></script>
+<script src="/customize.js?v=4.0"></script>
 </body>
 </html>
