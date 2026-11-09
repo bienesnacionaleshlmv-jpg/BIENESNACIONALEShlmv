@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bienes Nacionales | Inventario HLMV</title>
 <meta name="theme-color" content="#ffffff">
-<meta name="application-name" content="Inventario HLMV">
+<meta name="application-name" content="Bienes Nacionales HLMV">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Bienes HLMV">
@@ -319,7 +319,7 @@ try {
 <link rel="stylesheet" href="/pro.css?v=3.2">
 <link rel="stylesheet" href="/customize.css?v=3.2">
 <link rel="stylesheet" href="/minimal.css?v=3.2">
-<link rel="stylesheet" href="/institucional.css?v=4.0">
+<link rel="stylesheet" href="/institucional.css?v=5.0-apple">
 </head>
 <body class="pro-login">
 <div id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -1023,51 +1023,68 @@ async function saveDescripcion(){
 }
 
 // ---------- INVENTARIO · HOME ----------
+// Inicio Apple Institucional 5.0: solo presentación; conserva API y registros existentes.
+function bnHomeIcon(kind){
+  const shapes={
+    bien:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8m-4-4h8"/>',
+    scan:'<path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 12h8"/>',
+    area:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h6m-3 0v6"/>',
+    search:'<circle cx="10.8" cy="10.8" r="6.7"/><path d="m16 16 5 5"/>',
+    upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
+    chart:'<path d="M3 21V3m0 18h18M8 16v-5m5 5V6m5 10v-8"/>',
+    people:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3m3-12a3 3 0 0 1 0 6m0 2a5 5 0 0 1 3 4"/>',
+    box:'<path d="m12 2 9 5-9 5-9-5 9-5Zm-9 5v10l9 5 9-5V7m-9 5v10"/>',
+    arrow:'<path d="m7 17 10-10M7 7h10v10"/>',
+    more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    file:'<path d="M6 2h8l4 4v16H6zM14 2v5h5M9 12h6m-6 4h6"/>',
+    logout:'<path d="m10 17 5-5-5-5m5 5H3m9-9h8v18h-8"/>',
+    download:'<path d="M12 3v13m-5-5 5 5 5-5M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>'
+  };
+  return '<svg class="bn5-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(shapes[kind]||shapes.box)+'</svg>';
+}
 async function renderInventarioHome(app){
   app.innerHTML='<div class="wrap inv-wrap"><div class="pro-empty">Cargando panel de Bienes Nacionales…</div></div>';
   const [areas,bienes,empleados]=await Promise.all([fetchAreas(),fetchAllBienes(),DB.collection('empleados').get()]);
-  const activos=bienes.filter(b=>!b.descargado);
   const descargados=bienes.filter(b=>b.descargado);
   const responsables=new Set([...areas.filter(a=>a.jefeNombre).map(a=>a.jefePersonaId||a.jefeNombre.toLowerCase()),...empleados.docs.map(p=>p.id)]);
   const areaById=Object.fromEntries(areas.map(a=>[a.id,a]));
   const empById=Object.fromEntries(empleados.docs.map(p=>[p.id,p.data()]));
-  const recent=[...bienes].sort((x,y)=>String(y.creadoEn||'').localeCompare(String(x.creadoEn||''))).slice(0,6);
+  const recent=[...bienes].sort((x,y)=>String(y.creadoEn||'').localeCompare(String(x.creadoEn||''))).slice(0,5);
   const status=b=>b.descargado?'<span class="bn-status out">Descargado</span>':'<span class="bn-status active">Activo</span>';
-  const person=b=>b.personaTipo==='jefe'?areaById[b.areaId]?.jefeNombre:b.personaTipo==='empleado'?empById[b.personaId]?.nombre:'';
-  app.innerHTML=`<div class="wrap inv-wrap bn-home">
-   <div class="bn-welcome"><div><p class="bn-overline">HOSPITAL LEONARDO MARTÍNEZ VALENZUELA · INVENTARIO INSTITUCIONAL</p><h1>Bienes Nacionales</h1><p class="pro-subtitle">Sistema de gestión, control y consulta de bienes del hospital.</p></div><a class="bn-home-area-link" href="#/areas">▦ Áreas del hospital ↗</a></div>
-   <div class="pro-stat-grid bn-stats">
-     <div class="pro-stat"><div class="pro-stat-top">Total de bienes <span class="pro-stat-icon">▣</span></div><div class="pro-stat-value">${bienes.length.toLocaleString('es-HN')}</div><div class="pro-stat-note">Registros de inventario</div></div>
-     <div class="pro-stat"><div class="pro-stat-top">Áreas registradas <span class="pro-stat-icon">▥</span></div><div class="pro-stat-value">${areas.length}</div><div class="pro-stat-note">Áreas y unidades del hospital</div></div>
-     <div class="pro-stat"><div class="pro-stat-top">Responsables <span class="pro-stat-icon">♙</span></div><div class="pro-stat-value">${responsables.size}</div><div class="pro-stat-note">Personas vinculadas</div></div>
-     <div class="pro-stat"><div class="pro-stat-top">Bienes descargados <span class="pro-stat-icon">↘</span></div><div class="pro-stat-value">${descargados.length}</div><div class="pro-stat-note">Fuera de servicio · ${activos.length} activos</div></div>
-   </div>
-   <section class="bn-actions pro-panel"><div class="pro-panel-header"><div><h2>Acciones de inventario</h2><p>Accede a las funciones principales</p></div></div>
-     <div class="bn-searchbox"><label class="pro-sr-only" for="bnQuickSearch">Buscar bienes por código, descripción o serie</label><input id="bnQuickSearch" type="search" placeholder="Buscar bienes por código, descripción, serie, área…" onkeydown="if(event.key==='Enter')buscarBienDesdeHome()"><button class="btn" type="button" onclick="buscarBienDesdeHome()">Buscar bienes</button></div>
-     <div class="bn-action-grid">
-       ${IS_OWNER?'<button class="bn-action primary" onclick="createAssetFlow()">＋<span>Registrar bien</span></button>':''}
-       ${IS_OWNER?'<a class="bn-action" href="#/importar">⇧<span>Importar Excel</span></a>':''}
-       ${IS_OWNER?'<a class="bn-action" href="#/importar-pdf">▤<span>Agregar PDF SIAFI</span></a>':''}
-       <button class="bn-action" onclick="exportGeneralExcel()">↓<span>Exportar Excel</span></button>
-       <button class="bn-action" onclick="exportGeneralWord()">⇩<span>Exportar Word</span></button>
-       <button class="bn-action" onclick="openQRScanner()">▦<span>Escanear QR</span></button>
-       <button class="bn-action" onclick="location.hash='#/areas'">▥<span>Áreas</span></button>
-       <button class="bn-action" onclick="location.hash='#/objetos'">◈<span>Tipos de bienes</span></button>
-       ${IS_ADMIN?'<a class="bn-action danger" href="#/buscar">↘<span>Realizar descargo</span></a>':''}
-       ${IS_ADMIN?'<a class="bn-action" href="#/usuarios">♙<span>Usuarios y permisos</span></a>':''}
-     </div>
-   </section>
-   <div class="pro-columns bn-home-columns">
-    <section class="pro-panel"><div class="pro-panel-header"><div><h2>Bienes recientes</h2><p>Últimos registros incorporados</p></div><a href="#/buscar" class="pro-link">Ver inventario ↗</a></div>
-      ${recent.length?`<div class="table-wrap"><table class="bn-recent"><thead><tr><th>Inventario</th><th>Descripción</th><th>Área</th><th>Responsable</th><th>Situación</th></tr></thead><tbody>${recent.map(b=>`<tr><td><a href="#/bien/${encodeURIComponent(b.numeroInventario)}">${esc(b.numeroInventario)}</a></td><td>${esc(b.descripcion)}</td><td>${esc(areaById[b.areaId]?.nombre||'—')}</td><td>${esc(person(b)||'Sin asignar')}</td><td>${status(b)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="pro-empty">Todavía no hay bienes registrados. Puedes empezar con Registrar bien o Importar Excel.</p>'}
+  const person=b=>b.personaTipo==='jefe'?areaById[b.areaId]?.jefeNombre:b.personaTipo==='empleado'?empById[b.personaId]?.nombre:(b.responsableNombre||b.responsable||'');
+  const action=(name,ic,route,kind='')=>`<a class="bn5-action ${kind}" href="${route}" aria-label="${name}"><span class="bn5-action-icon">${bnHomeIcon(ic)}</span><span>${name}</span></a>`;
+  const actionBtn=(name,ic,handler,kind='')=>`<button class="bn5-action ${kind}" type="button" onclick="${handler}"><span class="bn5-action-icon">${bnHomeIcon(ic)}</span><span>${name}</span></button>`;
+  app.innerHTML=`<div class="wrap inv-wrap bn5-home">
+    <div class="bn5-titlebar"><div><p class="bn5-kicker">BIENES NACIONALES · HOSPITAL LEONARDO MARTÍNEZ VALENZUELA</p><h1>Panel principal</h1><p class="bn5-subtitle">Gestión y control del inventario institucional</p></div><a class="bn5-secondary-link" href="#/areas">${bnHomeIcon('area')} Áreas <span aria-hidden="true">↗</span></a></div>
+    <form class="bn5-hero-search" onsubmit="event.preventDefault();buscarBienDesdeHome()"><label class="pro-sr-only" for="bnQuickSearch">Buscar bienes por SIAFI, descripción, serie o responsable</label>${bnHomeIcon('search')}<input id="bnQuickSearch" type="search" autocomplete="off" placeholder="Buscar por SIAFI, descripción, serie o responsable…"><button class="btn" type="submit">Buscar</button></form>
+    <section class="bn5-stats" aria-label="Indicadores del inventario">
+      <a class="bn5-stat" href="#/buscar"><span class="bn5-stat-icon is-navy">${bnHomeIcon('box')}</span><span class="bn5-stat-copy"><span class="bn5-stat-label">Bienes registrados</span><strong>${bienes.length.toLocaleString('es-HN')}</strong><small>${descargados.length} descargados · ${bienes.length-descargados.length} activos</small></span></a>
+      <a class="bn5-stat" href="#/areas"><span class="bn5-stat-icon is-teal">${bnHomeIcon('area')}</span><span class="bn5-stat-copy"><span class="bn5-stat-label">Áreas</span><strong>${areas.length.toLocaleString('es-HN')}</strong><small>Unidades del hospital</small></span></a>
+      <a class="bn5-stat" href="#/responsables"><span class="bn5-stat-icon is-blue">${bnHomeIcon('people')}</span><span class="bn5-stat-copy"><span class="bn5-stat-label">Responsables</span><strong>${responsables.size.toLocaleString('es-HN')}</strong><small>Personas vinculadas</small></span></a>
     </section>
-    <section class="pro-panel"><div class="pro-panel-header"><div><h2>Accesos rápidos</h2><p>Catálogos y administración</p></div></div>
-      <div class="bn-quicklinks"><a href="#/areas">Áreas del hospital ↗</a><a href="#/responsables">Responsables ↗</a><a href="#/objetos">Tipos de bienes ↗</a><a href="#/reportes">Reportes y análisis ↗</a>${IS_ADMIN?'<a href="#/usuarios">Usuarios y permisos ↗</a>':''}<a href="#/buscar">Explorar todos los bienes ↗</a></div>
-      <p class="bn-qr-note">Los códigos QR públicos permiten consultar datos del bien y su responsable sin iniciar sesión, pero no editarlos.</p>
+    <section class="bn5-section bn5-primary-actions"><div class="bn5-section-head"><div><h2>Accesos principales</h2><p>Las funciones más utilizadas, a un clic</p></div></div>
+      <div class="bn5-actions-grid">
+        ${IS_OWNER?actionBtn('Registrar bien','bien','createAssetFlow()','bn5-featured'):''}
+        ${actionBtn('Escanear QR','scan','openQRScanner()')}
+        ${action('Áreas','area','#/areas')}
+        ${action('Explorar bienes','search','#/buscar')}
+        ${IS_OWNER?action('Importar','upload','#/importar'):''}
+        ${action('Reportes','chart','#/reportes')}
+      </div>
+      <details class="bn5-more"><summary>${bnHomeIcon('more')} Más herramientas y gestiones <span class="bn5-more-caret">⌄</span></summary><div class="bn5-more-grid">
+        ${IS_OWNER?action('Importar PDF SIAFI','file','#/importar-pdf'):''}
+        ${action('Tipos de bienes','box','#/objetos')}
+        ${action('Responsables','people','#/responsables')}
+        ${actionBtn('Exportar Excel','download','exportGeneralExcel()')}
+        ${actionBtn('Exportar Word','file','exportGeneralWord()')}
+        ${IS_ADMIN?action('Usuarios y permisos','people','#/usuarios'):''}
+        ${IS_ADMIN?action('Descargos','logout','#/buscar'):''}
+      </div></details>
     </section>
-   </div>
-   <div class="pro-section-head"><div><h2>Áreas</h2><p>Acceso directo a las unidades registradas</p></div><a href="#/areas" class="pro-link">Ver todas las áreas ↗</a></div>
-   ${areas.length?`<div class="pro-area-tiles">${areas.slice(0,6).map(a=>areaCardHtml({...a,bienCount:bienes.filter(b=>b.areaId===a.id).length})).join('')}</div>`:`<section class="pro-panel"><p class="pro-muted">Todavía no hay áreas registradas.</p>${IS_OWNER?'<button class="btn" onclick="openAreaForm()">＋ Crear primera área</button>':''}</section>`}
+    <section class="bn5-section bn5-recent-section"><div class="bn5-section-head"><div><h2>Últimos bienes registrados</h2><p>Actividad reciente del inventario</p></div><a href="#/buscar" class="bn5-view-all">Ver todos ↗</a></div>
+      ${recent.length?`<div class="bn5-table-scroll"><table class="bn5-recent"><thead><tr><th>N.º SIAFI</th><th>Descripción</th><th>Área</th><th>Responsable</th><th>Situación</th></tr></thead><tbody>${recent.map(b=>`<tr><td><a href="#/bien/${encodeURIComponent(b.numeroInventario)}">${esc(b.numeroInventario)}</a></td><td>${esc(b.descripcion||'—')}</td><td>${esc(areaById[b.areaId]?.nombre||'—')}</td><td>${esc(person(b)||'Sin asignar')}</td><td>${status(b)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="bn5-empty">Todavía no hay bienes registrados. Utiliza Registrar bien o Importar para comenzar.</div>'}
+    </section>
+    <footer class="bn5-footnote">Los códigos QR públicos permiten consultar los datos del bien y el nombre de su responsable sin iniciar sesión. La edición y los descargos requieren permisos.</footer>
   </div>`;
 }
 
