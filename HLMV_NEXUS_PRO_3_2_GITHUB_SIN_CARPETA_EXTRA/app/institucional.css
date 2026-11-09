@@ -36,11 +36,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .sidebar-foot{color:#72849a!important}
 .signal-dot,.online-dot{background:#087e79!important;box-shadow:0 0 0 3px #087e791d!important}
 .bn-gov-banner{margin-left:254px;min-height:87px;padding:10px 30px;display:flex;align-items:center;gap:20px;background:linear-gradient(120deg,#fff 60%,#edf7f8 100%);border-bottom:1px solid #dce6ef}
-.bn-gov-banner img{height:62px;width:auto;max-width:46%;object-fit:contain;object-position:left center}
-.bn-gov-banner .bn-banner-mark{height:49px;max-width:72px}
+.bn-gov-banner img{height:66px;width:auto;max-width:48%;object-fit:contain;object-position:left center}
+.bn-gov-banner .bn-banner-mark{height:50px;max-width:74px}
 .bn-gov-divider{height:47px;width:1px;background:#cbd7e4}
 .bn-gov-titles{display:flex;flex-direction:column;gap:1px;line-height:1.2;min-width:0}
-.bn-gov-titles strong{font-size:20px;font-weight:800;color:#0b2c4e}
+.bn-gov-titles strong{font-size:21px;font-weight:800;color:#0b2c4e}
 .bn-gov-titles span{font-size:11px;color:#506a7d}
 header.top{margin-left:254px!important;background:rgba(255,255,255,.96)!important;border-bottom:1px solid #dce5ef!important;box-shadow:none!important;padding:11px 0!important}
 header.top .wrap{padding-left:30px!important;padding-right:30px!important}
@@ -125,8 +125,8 @@ tr:hover td{background:#f7fbfe!important}
 .mobile-tabbar button{color:#557088!important}
 .mobile-tabbar button.active{color:#087e79!important}
 @media(max-width:1180px){#shellSidebar{width:220px!important}#app,header.top,.bn-gov-banner{margin-left:220px!important}.bn-action-grid{grid-template-columns:repeat(3,1fr)}.bn-home-columns{grid-template-columns:1fr!important}}
-@media(max-width:850px){#shellSidebar{width:254px!important;transform:translateX(-105%)!important}body.sidebar-open #shellSidebar{transform:translateX(0)!important}#app,header.top,.bn-gov-banner{margin-left:0!important}.bn-gov-banner{padding:9px 16px;min-height:60px;gap:11px}.bn-gov-banner img{height:42px;max-width:43%}.bn-gov-banner .bn-banner-mark{height:34px;max-width:50px}.bn-gov-titles strong{font-size:15px}.bn-gov-titles span{font-size:10px}.bn-gov-divider{height:32px}}
-@media(max-width:650px){.bn-gov-banner{gap:8px}.bn-gov-banner>img:first-child{max-width:45%;height:34px}.bn-gov-banner .bn-banner-mark{height:33px;max-width:42px}.bn-gov-titles strong{font-size:12px}.bn-gov-titles span{font-size:8px}.bn-brand-muted{display:none}.bn-home .bn-actions{padding:16px!important}.bn-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bn-action{min-height:79px}.bn-searchbox{flex-direction:column}.bn-welcome{align-items:flex-start}.bn-home-columns{grid-template-columns:1fr!important}.bn-selection-bar{flex-direction:column;align-items:flex-start}.bn-selection-bar .row-actions{width:100%;flex-wrap:wrap}.bn-selection-bar .btn{flex:1 1 150px}.bn-recent{min-width:520px}.bn-stats .pro-stat{min-height:110px}.bn-stats .pro-stat-value{font-size:26px!important}.bn-gov-banner img{object-fit:contain}}
+@media(max-width:850px){#shellSidebar{width:254px!important;transform:translateX(-105%)!important}body.sidebar-open #shellSidebar{transform:translateX(0)!important}#app,header.top,.bn-gov-banner{margin-left:0!important}.bn-gov-banner{padding:9px 16px;min-height:64px;gap:11px}.bn-gov-banner img{height:46px;max-width:44%}.bn-gov-banner .bn-banner-mark{height:34px;max-width:50px}.bn-gov-titles strong{font-size:15px}.bn-gov-titles span{font-size:10px}.bn-gov-divider{height:32px}}
+@media(max-width:650px){.bn-gov-banner{gap:8px}.bn-gov-banner>img:first-child{max-width:47%;height:38px}.bn-gov-banner .bn-banner-mark{height:33px;max-width:42px}.bn-gov-titles strong{font-size:12px}.bn-gov-titles span{font-size:8px}.bn-brand-muted{display:none}.bn-home .bn-actions{padding:16px!important}.bn-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bn-action{min-height:79px}.bn-searchbox{flex-direction:column}.bn-welcome{align-items:flex-start}.bn-home-columns{grid-template-columns:1fr!important}.bn-selection-bar{flex-direction:column;align-items:flex-start}.bn-selection-bar .row-actions{width:100%;flex-wrap:wrap}.bn-selection-bar .btn{flex:1 1 150px}.bn-recent{min-width:520px}.bn-stats .pro-stat{min-height:110px}.bn-stats .pro-stat-value{font-size:26px!important}.bn-gov-banner img{object-fit:contain}}
 
 /* El encabezado también es de ancho completo antes de iniciar sesión. */
 body.pro-login .bn-gov-banner{margin-left:0!important}
