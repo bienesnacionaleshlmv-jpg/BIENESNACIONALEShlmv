@@ -1,6 +1,6 @@
 // HLMV PWA: SOLO interfaz. Nunca almacenar respuestas privadas en caché.
-const SHELL='hlmv-bienes-nacionales-institucional-v41';
-const ASSETS=['/','/manifest.webmanifest','/icons/bn-taskbar-192.png','/icons/bn-taskbar-512.png','/pro.css','/pro.js','/customize.css','/customize.js','/minimal.css','/institucional.css','/icons/bn-logo.png','/icons/gobierno-salud-full.png'];
+const SHELL='hlmv-bienes-nacionales-institucional-v42';
+const ASSETS=['/','/manifest.webmanifest','/icons/bn-icon-v42-32.png','/icons/bn-icon-v42-192.png','/icons/bn-icon-v42-512.png','/pro.css','/pro.js','/customize.css','/customize.js','/minimal.css','/institucional.css','/icons/bn-logo.png','/icons/gobierno-salud-v42.png'];
 self.addEventListener('install', event=>{
  event.waitUntil(caches.open(SHELL).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
