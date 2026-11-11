@@ -1,6 +1,6 @@
 // HLMV PWA: SOLO interfaz. Nunca almacenar respuestas privadas en caché.
-const SHELL='hlmv-bienes-nacionales-institucional-v50-apple';
-const ASSETS=['/','/manifest.webmanifest','/icons/bn-icon-v42-32.png','/icons/bn-icon-v42-192.png','/icons/bn-icon-v42-512.png','/pro.css','/pro.js','/customize.css','/customize.js','/minimal.css','/institucional.css','/icons/bn-logo.png','/icons/gobierno-salud-v42.png'];
+const SHELL='hlmv-bienes-nacionales-compacto-v51-opcion4';
+const ASSETS=['/','/manifest.webmanifest','/icons/bn-icon-v42-32.png','/icons/bn-icon-v42-192.png','/icons/bn-icon-v42-512.png','/pro.css','/pro.js','/customize.css','/customize.js','/minimal.css','/institucional.css','/compacto.css','/icons/bn-logo.png','/icons/gobierno-salud-v42.png'];
 self.addEventListener('install', event=>{
  // Una imagen institucional ausente no debe bloquear la actualización del panel.
  event.waitUntil(caches.open(SHELL).then(async cache=>{
