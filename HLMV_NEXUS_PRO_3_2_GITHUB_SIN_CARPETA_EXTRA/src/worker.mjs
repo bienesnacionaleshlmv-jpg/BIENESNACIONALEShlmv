@@ -165,44 +165,191 @@ async function report(db,areaId){
  bienes.sort((a,b)=>fmt(a.numeroInventario).localeCompare(fmt(b.numeroInventario),'es',{numeric:true}));
  if(bienes.length>5000)fail('Este reporte supera los 5000 bienes. Exporta por área para no exceder el límite gratuito del servidor.',413);
  const headers=['N.º inventario','Descripción','N.º serie','Color','Estado físico','Área','Responsable','Valor de adquisición (L)','Fecha adquisición','Marca','Modelo','N.º ficha','Situación','Fecha de descargo','Motivo del descargo','Referencia de descargo'];
- const rows=bienes.map(b=>[b.numeroInventario,b.descripcion,b.numeroSerie,b.color,b.descargado?'Fuera de servicio':b.estadoBueno?'Funciona':'Sin confirmar',areas[b.areaId]?.nombre||'',b.personaTipo==='jefe'?areas[b.areaId]?.jefeNombre:b.personaTipo==='empleado'?empl[b.personaId]?.nombre:'',b.precio,b.fechaAdquisicion,b.marca,b.modelo,b.numeroFicha,b.descargado?'Descargado':'Activo',b.fechaDescargo||'',b.motivoDescargo||'',b.referenciaDescargo||''].map(fmt));
+ const rows=bienes.map(b=>[b.numeroInventario,b.descripcion,b.numeroSerie,b.color,fmt(b.estadoOriginal)||(b.estadoBueno?'BUENO':'SIN CONFIRMAR'),areas[b.areaId]?.nombre||'',b.personaTipo==='jefe'?areas[b.areaId]?.jefeNombre:b.personaTipo==='empleado'?empl[b.personaId]?.nombre:'',b.precio,b.fechaAdquisicion,b.marca,b.modelo,b.numeroFicha,b.descargado?'Descargado':'Activo',b.fechaDescargo||'',b.motivoDescargo||'',b.referenciaDescargo||''].map(fmt));
  return {headers,rows,area:areaId?(areas[areaId]?.nombre||'Área seleccionada'):'Todo el hospital'};
 }
+// Exportación PRE FICHA: formato basado en el archivo Auditoria.xlsx proporcionado por Bienes Nacionales.
 // Ambos formatos se generan directamente en Cloudflare Workers como archivos Office Open XML.
 // No requiere Microsoft Office instalado ni enviar el inventario a un servicio externo.
+// Exportación institucional basada en el modelo "PRE FICHA" de Auditoria.xlsx.
+// Usa únicamente datos existentes de D1; no modifica ningún registro.
 function exportOffice(r,format){
- const Z={};
- if(format==='xlsx'){
-  const cref=(n)=>{let v=n+1,x='';while(v){v--;x=String.fromCharCode(65+v%26)+x;v=Math.floor(v/26);}return x;};
-  const cell=(v,i,j)=>{
-   const address=cref(j)+(i+1);
-   if(i>0&&j===7&&fmt(v)!==''&&Number.isFinite(Number(v)))return `<c r="${address}" s="2"><v>${Number(v)}</v></c>`;
-   const text=xmlesc(v);
-   return `<c r="${address}" t="inlineStr"${i===0?' s="1"':''}><is><t xml:space="preserve">${text}</t></is></c>`;
-  };
-  const cells=[r.headers,...r.rows].map((x,i)=>`<row r="${i+1}"${i===0?' ht="30" customHeight="1"':''}>${x.map((v,j)=>cell(v,i,j)).join('')}</row>`).join('');
-  const widths=[18,42,22,16,19,27,27,22,20,22,22,18,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
-  const last=r.rows.length+1;
-  Z['[Content_Types].xml']=`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
-  Z['_rels/.rels']=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
-  Z['xl/workbook.xml']=`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inventario HLMV" sheetId="1" r:id="rId1"/></sheets></workbook>`;
-  Z['xl/_rels/workbook.xml.rels']=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
-  Z['xl/styles.xml']=`<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="10"/><name val="Calibri"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF21422B"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`;
-  Z['xl/worksheets/sheet1.xml']=`<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths}</cols><sheetData>${cells}</sheetData><autoFilter ref="A1:M${Math.max(1,last)}"/></worksheet>`;
- }else{
-  const p=(text,b=false)=>`<w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r>${b?'<w:rPr><w:b/></w:rPr>':''}<w:t xml:space="preserve">${xmlesc(text)}</w:t></w:r></w:p>`;
-  const cell=(v,b=false)=>`<w:tc><w:tcPr><w:tcW w:w="1400" w:type="dxa"/></w:tcPr>${p(v,b)}</w:tc>`;
-  const tableRow=(v,b=false)=>`<w:tr>${v.map(x=>cell(x,b)).join('')}</w:tr>`;
-  const fields=[0,1,2,5,6,12];
-  const cols=fields.map(i=>r.headers[i]);
-  const records=r.rows.map(x=>tableRow(fields.map(i=>x[i]))).join('');
-  const annex=r.rows.map((x,i)=>p(`${x[0] || '(sin número)'} — ${x[1] || 'Bien sin descripción'}`,true)+p(`Marca: ${x[9]||'—'}  |  Modelo: ${x[10]||'—'}  |  Color: ${x[3]||'—'}  |  Valor: L ${x[7]||'—'}  |  Adquisición: ${x[8]||'—'}  |  Ficha: ${x[11]||'—'}`)).join('');
-  Z['[Content_Types].xml']=`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
-  Z['_rels/.rels']=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
-  Z['word/document.xml']=`<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${p('HOSPITAL LEONARDO MARTÍNEZ VALENZUELA',true)}${p('Departamento de Bienes Nacionales',true)}${p(`Inventario: ${r.area}`)}${p(`Fecha de exportación: ${new Date().toISOString().slice(0,10)}  ·  Total de bienes: ${r.rows.length}`)}<w:tbl><w:tblPr><w:tblBorders><w:top w:val="single"/><w:left w:val="single"/><w:bottom w:val="single"/><w:right w:val="single"/><w:insideH w:val="single"/><w:insideV w:val="single"/></w:tblBorders></w:tblPr>${tableRow(cols,true)}${records}</w:tbl>${p('Información adicional de los bienes',true)}${annex}<w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body></w:document>`;
+ const areaGroups=new Map();
+ for(const rec of r.rows){
+  const area=fmt(rec[5])||'SIN ÁREA';
+  if(!areaGroups.has(area))areaGroups.set(area,[]);
+  areaGroups.get(area).push(rec);
  }
+ if(!areaGroups.size)areaGroups.set(r.area==='Todo el hospital'?'SIN REGISTROS':r.area,[]);
+ const groups=Array.from(areaGroups,([name,records])=>({name,records})).sort((a,b)=>a.name.localeCompare(b.name,'es'));
+ const fecha=new Date().toLocaleDateString('es-HN',{timeZone:'America/Tegucigalpa',day:'2-digit',month:'2-digit',year:'numeric'});
+ const firstNonEmpty=s=>fmt(s)||'—';
+ function responsibleOf(g){
+  const names=[...new Set(g.records.map(x=>fmt(x[6])).filter(Boolean))];
+  return names.length===1?names[0]:names.length>1?'VARIOS RESPONSABLES (VER DETALLE)':'SIN RESPONSABLE ASIGNADO';
+ }
+ const localText=x=>xmlesc(x===undefined||x===null?'':String(x));
+ if(format==='xlsx'){
+  const Z={};
+  const excelCol=n=>{let a='';for(n++;n;n=Math.floor((n-1)/26))a=String.fromCharCode(65+(n-1)%26)+a;return a;};
+  const numericPrice=v=>{
+   if(typeof v==='number')return Number.isFinite(v)?v:null;
+   const s=fmt(v).replace(/\s|L\.?|HNL|\$/gi,'').replace(/,/g,'');
+   return s&&/^-?\d+(?:\.\d+)?$/.test(s)?Number(s):null;
+  };
+  const textCell=(col,row,value,style=0,number=false)=>{
+   const ref=excelCol(col-1)+row;
+   if(number&&Number.isFinite(value))return `<c r="${ref}" s="${style}"><v>${value}</v></c>`;
+   return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${localText(value)}</t></is></c>`;
+  };
+  const rowXml=(i,cols,height)=>`<row r="${i}" ht="${height}" customHeight="1">${cols.map((v,j)=>textCell(j+1,i,v.v,v.s,v.n)).join('')}</row>`;
+  const blank=(style=0,n=15)=>Array.from({length:n},()=>({v:'',s:style}));
+  const merged=(cellValues,start,end,rn,fromStyle=0)=>{
+   for(let j=start;j<=end;j++)if(!cellValues[j-1])cellValues[j-1]={v:'',s:fromStyle};
+  };
+  const allSheets=[];
+  const used=new Set();
+  const uniqueName=(name)=>{
+   let s=fmt(name).replace(/[\\/?*\[\]:]/g,' ').replace(/[\u0000-\u001F]/g,'').trim().slice(0,31)||'Área';
+   let base=s,n=2;while(used.has(s.toLowerCase())){const suffix=' '+n++;s=base.slice(0,31-suffix.length)+suffix;}
+   used.add(s.toLowerCase());return s;
+  };
+  function makePreFicha(g){
+   const lines=[],merges=[];
+   const row=(i,cols,h=25)=>lines.push(rowXml(i,cols,h));
+   const mg=(a)=>merges.push(`<mergeCell ref="${a}"/>`);
+   for(let i=1;i<=4;i++){const c=blank(1);c[0].v=['SECRETARÍA DE SALUD','DIRECCIÓN NACIONAL DE BIENES DEL ESTADO','BIENES NACIONALES','PRE FICHA'][i-1];c[0].s=i===4?2:1;row(i,c,i===4?30:27);mg(`A${i}:O${i}`);}
+   row(5,blank(0),10);row(6,blank(0),12);
+   const v7=blank(0);v7[0]={v:'INSTITUCIÓN:',s:3};v7[2]={v:'SECRETARÍA DE SALUD',s:4};v7[7]={v:'NOMBRE DE RESPONSABLE:',s:3};v7[9]={v:responsibleOf(g),s:4};row(7,v7,30);
+   ['A7:B7','C7:F7','H7:I7','J7:O7'].forEach(mg);
+   const v8=blank(0);v8[0]={v:'DEPARTAMENTO/OFICINA:',s:3};v8[2]={v:g.name,s:4};v8[7]={v:'FECHA:',s:3};v8[9]={v:fecha,s:4};row(8,v8,30);
+   ['A8:B8','C8:F8','H8:I8','J8:O8'].forEach(mg);
+   row(9,blank(0),10);row(10,blank(0),10);
+   const h11=blank(5);h11[0].v='DOCUMENTO RESPALDO';h11[2].v='DATOS DEL BIEN';h11[12].v='ESTADO DEL BIEN';h11[13].v='NÚMERO DE FICHA';h11[14].v='Precio/Total';row(11,h11,30);
+   ['A11:B11','C11:L11','M11:M12','N11:N12','O11:O12'].forEach(mg);
+   const h12=blank(6);[[0,'N°'],[1,'INVENTARIO'],[2,'DESCRIPCIÓN DEL BIEN'],[5,'MARCA'],[7,'MODELO'],[9,'SERIE'],[11,'COLOR']].forEach(([i,v])=>h12[i].v=v);h12[12].v='';h12[13].v='';h12[14].v='';row(12,h12,33);
+   ['C12:E12','F12:G12','H12:I12','J12:K12'].forEach(mg);
+   g.records.forEach((x,i)=>{
+    const n=i+13,cols=blank(i%2?8:7),status=fmt(x[4])||'SIN CONFIRMAR';
+    cols[0].v=i+1;cols[0].n=true;
+    cols[1].v=x[0];cols[2].v=x[1];cols[5].v=x[9]||'SIN MARCA';cols[7].v=x[10]||'SIN MODELO';
+    cols[9].v=x[2]||'SIN SERIE';cols[11].v=x[3];cols[12].v=status.toUpperCase();cols[13].v=x[11];
+    const precio=numericPrice(x[7]);if(precio!==null){cols[14]={v:precio,s:9,n:true};}else cols[14].v=x[7];
+    const dlen=fmt(x[1]).length;row(n,cols,Math.min(90,Math.max(29,Math.ceil(dlen/55)*16)));
+    [`C${n}:E${n}`,`F${n}:G${n}`,`H${n}:I${n}`,`J${n}:K${n}`].forEach(mg);
+   });
+   // Deja espacio para firmas al final de cada pre ficha.
+   const bottom=12+g.records.length,sign=bottom+4;
+   row(bottom+1,blank(0),12);row(bottom+2,blank(0),12);row(bottom+3,blank(0),12);
+   let f=blank(10);f[0].v='JEFE DE BIENES NACIONALES';f[5].v='ADMINISTRACIÓN';f[10].v='AUDITORÍA INTERNA';row(sign,f,25);
+   let s=blank(11);s[0].v='________________________________';s[5].v='________________________________';s[10].v='________________________________';row(sign+1,s,24);
+   let fs=blank(11);fs[0].v='Firma';fs[5].v='Firma';fs[10].v='Firma';row(sign+2,fs,24);
+   let dni=blank(11);dni[0].v='DNI: ________________________';dni[5].v='DNI: ________________________';dni[10].v='DNI: ________________________';row(sign+3,dni,24);
+   for(let j=0;j<4;j++)for(const [a,b] of [[1,5],[6,10],[11,15]])mg(`${excelCol(a-1)}${sign+j}:${excelCol(b-1)}${sign+j}`);
+   const ref=`A1:O${sign+3}`;
+   const dims=[9,19,18,7,7,11,11,12,10,12,10,17,20,19,18];
+   const colxml=dims.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+   return `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="${ref}"/><sheetViews><sheetView workbookViewId="0" showGridLines="0" zoomScale="80"><pane ySplit="12" topLeftCell="A13" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="17"/><cols>${colxml}</cols><sheetData>${lines.join('')}</sheetData><mergeCells count="${merges.length}">${merges.join('')}</mergeCells><printOptions horizontalCentered="1"/><pageMargins left="0.25" right="0.25" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="5" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  }
+  const detHeaders=['INVENTARIO','DESCRIPCIÓN DEL BIEN','ÁREA','RESPONSABLE ACTUAL','SITUACIÓN','FECHA DESCARGO','MOTIVO DESCARGO','REFERENCIA','FECHA ADQUISICIÓN','N.º SERIE'];
+  function makeDetalle(){
+   const lines=[];const c1=detHeaders.map(h=>({v:h,s:5}));lines.push(rowXml(1,c1,33));
+   const detail=r.rows;
+   detail.forEach((x,i)=>{
+    const c=[x[0],x[1],x[5],x[6],x[12],x[13],x[14],x[15],x[8],x[2]].map(v=>({v,s:i%2?8:7}));
+    lines.push(rowXml(i+2,c,Math.min(70,Math.max(25,Math.ceil(fmt(x[1]).length/50)*14))));
+   });
+   const widths=[19,48,31,35,18,18,40,28,18,22];
+   const colxml=widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+   return `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${colxml}</cols><sheetData>${lines.join('')}</sheetData><autoFilter ref="A1:J${Math.max(1,r.rows.length+1)}"/><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="5" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  }
+  for(const g of groups)allSheets.push({name:uniqueName(g.name),xml:makePreFicha(g)});
+  allSheets.push({name:uniqueName('DETALLE RESPONSABLES'),xml:makeDetalle()});
+  const font=(bold=false,color='FF192A3E',size=10)=>`<font>${bold?'<b/>':''}<sz val="${size}"/><color rgb="${color}"/><name val="Calibri"/></font>`;
+  const fill=color=>`<fill><patternFill patternType="solid"><fgColor rgb="${color}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const fullBorder='<border><left style="thin"><color rgb="FF454545"/></left><right style="thin"><color rgb="FF454545"/></right><top style="thin"><color rgb="FF454545"/></top><bottom style="thin"><color rgb="FF454545"/></bottom><diagonal/></border>';
+  const styles=`<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts><fonts count="5">${font()}${font(true,'FF111827',14)}${font(true,'FF111827',12)}${font(true,'FF15283B',10)}${font(false,'FF5F6E82',9)}</fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fill('FFB8CAEA')}${fill('FFD6D6D8')}${fill('FFF6F8FB')}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>${fullBorder}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="12"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs></styleSheet>`;
+  Z['[Content_Types].xml']=`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${allSheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`;
+  Z['_rels/.rels']='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  Z['xl/workbook.xml']=`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${allSheets.map((s,i)=>`<sheet name="${localText(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`;
+  Z['xl/_rels/workbook.xml.rels']=`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${allSheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${allSheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  Z['xl/styles.xml']=styles;
+  allSheets.forEach((s,i)=>{Z[`xl/worksheets/sheet${i+1}.xml`]=s.xml;});
+  return zipSync(Object.fromEntries(Object.entries(Z).map(([k,v])=>[k,strToU8(v)])),{level:5});
+ }
+ // WORD: reproduce el encabezado, campos de oficina, cuadro de bienes y firmas.
+ const Z={};
+ const p=(t,style={})=>{
+  const content=localText(t),size=style.size||18,spacing=style.after??90;
+  let para=`<w:p><w:pPr><w:spacing w:after="${spacing}"/>${style.center?'<w:jc w:val="center"/>':''}${style.break?'<w:pageBreakBefore/>':''}</w:pPr><w:r><w:rPr>${style.bold?'<w:b/>':''}<w:sz w:val="${size}"/>${style.color?`<w:color w:val="${style.color}"/>`:''}</w:rPr><w:t xml:space="preserve">${content}</w:t></w:r></w:p>`;
+  return para;
+ };
+ const tableCell=(value,width,opts={})=>{
+  const shading=opts.fill?`<w:shd w:val="clear" w:fill="${opts.fill}"/>`:'';
+  const span=opts.span?`<w:gridSpan w:val="${opts.span}"/>`:'';
+  const vertical=opts.vMerge?`<w:vMerge${opts.vMerge==='restart'?' w:val="restart"':''}/>`:'';
+  const text=p(value,{bold:opts.bold,size:opts.fontSize||16,center:opts.center,after:0,color:opts.color});
+  return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${span}${vertical}${shading}<w:vAlign w:val="center"/></w:tcPr>${text}</w:tc>`;
+ };
+ const row=(cells,repeat=false)=>`<w:tr>${repeat?'<w:trPr><w:tblHeader w:val="true"/></w:trPr>':''}${cells.join('')}</w:tr>`;
+ const borders=`<w:tblBorders>${['top','left','bottom','right','insideH','insideV'].map(e=>`<w:${e} w:val="single" w:sz="6" w:color="465160"/>`).join('')}</w:tblBorders>`;
+ const simpleTable=(rows,widths,opts={})=>`<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/>${opts.borders===false?'':borders}</w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
+ const widths=[650,1800,5150,1700,1700,1900,1450,1350,1550,1550];
+ const wsum=(start,count)=>widths.slice(start,start+count).reduce((a,b)=>a+b,0);
+ const makeDocs=groups.map((g,gi)=>{
+  const parts=[];
+  parts.push(p('SECRETARÍA DE SALUD',{bold:true,size:26,center:true,after:20,break:gi>0}));
+  parts.push(p('DIRECCIÓN NACIONAL DE BIENES DEL ESTADO',{bold:true,size:21,center:true,after:20}));
+  parts.push(p('BIENES NACIONALES',{bold:true,size:21,center:true,after:20}));
+  parts.push(p('PRE FICHA',{bold:true,size:23,center:true,after:210}));
+  const mw=[2600,6550,2600,6550];
+  const infoRows=[
+   row([tableCell('INSTITUCIÓN:',mw[0],{bold:true}),tableCell('SECRETARÍA DE SALUD',mw[1]),tableCell('NOMBRE DE RESPONSABLE:',mw[2],{bold:true}),tableCell(responsibleOf(g),mw[3])]),
+   row([tableCell('DEPARTAMENTO/OFICINA:',mw[0],{bold:true}),tableCell(g.name,mw[1]),tableCell('FECHA:',mw[2],{bold:true}),tableCell(fecha,mw[3])])
+  ];
+  parts.push(simpleTable(infoRows,mw));
+  parts.push(p(' ',{after:125,size:12}));
+  const hdr1=row([
+   tableCell('DOCUMENTO RESPALDO',wsum(0,2),{span:2,fill:'B8CAEA',bold:true,center:true}),
+   tableCell('DATOS DEL BIEN',wsum(2,5),{span:5,fill:'B8CAEA',bold:true,center:true}),
+   tableCell('ESTADO DEL BIEN',widths[7],{fill:'B8CAEA',bold:true,center:true,vMerge:'restart'}),
+   tableCell('NÚMERO DE FICHA',widths[8],{fill:'B8CAEA',bold:true,center:true,vMerge:'restart'}),
+   tableCell('PRECIO/TOTAL',widths[9],{fill:'B8CAEA',bold:true,center:true,vMerge:'restart'})
+  ],true);
+  const hdr2=row(['N°','INVENTARIO','DESCRIPCIÓN DEL BIEN','MARCA','MODELO','SERIE','COLOR'].map((t,i)=>tableCell(t,widths[i],{fill:i<2?'B8CAEA':'D6D6D8',bold:true,center:true})).concat([tableCell('',widths[7],{vMerge:'continue',fill:'B8CAEA'}),tableCell('',widths[8],{vMerge:'continue',fill:'B8CAEA'}),tableCell('',widths[9],{vMerge:'continue',fill:'B8CAEA'})]),true);
+  const rows=[hdr1,hdr2];
+  g.records.forEach((x,i)=>{
+   const values=[i+1,x[0],x[1],x[9]||'SIN MARCA',x[10]||'SIN MODELO',x[2]||'SIN SERIE',x[3],x[4]||'SIN CONFIRMAR',x[11],x[7]];
+   rows.push(row(values.map((v,j)=>tableCell(v,widths[j],{center:j!==2,fill:i%2?'F6F8FB':null,fontSize:15}))));
+  });
+  if(!g.records.length)rows.push(row([tableCell('SIN BIENES REGISTRADOS',widths.reduce((a,b)=>a+b,0),{span:10,center:true})]));
+  parts.push(simpleTable(rows,widths));
+  parts.push(p(' ',{after:200}));
+  const sigW=[6250,6250,6250];
+  parts.push(simpleTable([
+   row([tableCell('JEFE DE BIENES NACIONALES',sigW[0],{bold:true,center:true}),tableCell('ADMINISTRACIÓN',sigW[1],{bold:true,center:true}),tableCell('AUDITORÍA INTERNA',sigW[2],{bold:true,center:true})]),
+   row(sigW.map(w=>tableCell('_____________________________',w,{center:true}))),
+   row(sigW.map(w=>tableCell('Firma',w,{center:true}))),
+   row(sigW.map(w=>tableCell('DNI: _________________________',w,{center:true})))
+  ],sigW,{borders:false}));
+  // Un anexo opcional preserva la asignación individual y la información de descargo
+  // cuando la oficina tiene más de una persona responsable o hay bajas registradas.
+  const respCount=new Set(g.records.map(x=>fmt(x[6])).filter(Boolean)).size;
+  if(respCount>1||g.records.some(x=>fmt(x[12])==='Descargado')){
+   parts.push(p('ANEXO: ASIGNACIÓN Y SITUACIÓN DE LOS BIENES',{bold:true,size:19,after:85}));
+   const aw=[2000,5300,2800,2600,6000];
+   const annexRows=[row(['Inventario','Descripción','Responsable','Situación','Descargo / referencia'].map((v,i)=>tableCell(v,aw[i],{fill:'B8CAEA',bold:true,center:true})),true)];
+   for(const x of g.records)annexRows.push(row([x[0],x[1],x[6],x[12],`${x[13]||''} ${x[15]||''} ${x[14]||''}`.trim()].map((v,i)=>tableCell(v,aw[i],{fontSize:15,center:i!==1}))));
+   parts.push(simpleTable(annexRows,aw));
+  }
+  return parts.join('');
+ });
+ Z['[Content_Types].xml']='<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+ Z['_rels/.rels']='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+ Z['word/document.xml']=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${makeDocs.join('')}<w:sectPr><w:pgSz w:w="20160" w:h="12240" w:orient="landscape"/><w:pgMar w:top="650" w:right="650" w:bottom="650" w:left="650" w:header="300" w:footer="300"/></w:sectPr></w:body></w:document>`;
  return zipSync(Object.fromEntries(Object.entries(Z).map(([k,v])=>[k,strToU8(v)])),{level:5});
 }
+
 function normalize(s){return fmt(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 function decodeXml(s){return s.replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(+n)).replace(/&(?:amp|lt|gt|quot|apos);/g,m=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'"}[m]));}
 const unxml=s=>decodeXml(s.replace(/<[^>]*>/g,''));
