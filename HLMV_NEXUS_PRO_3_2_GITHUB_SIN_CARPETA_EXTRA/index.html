@@ -1177,7 +1177,8 @@ async function renderAreaDetail(app, areaId){
     </div>
     ${IS_OWNER && bienes.length ? `<div class="bulk-bar" id="bulkBar">
       <span id="bulkCount"></span>
-      ${IS_ADMIN?`<button class="btn danger-solid small" onclick="bulkDeleteBienes('${area.id}')">Eliminar seleccionados</button>`:''}
+      <button class="btn bn-qr-batch-btn small" type="button" onclick="imprimirQRAreaSeleccionados()">▦ Imprimir en formato QR</button>
+       ${IS_ADMIN?`<button class="btn danger-solid small" onclick="bulkDeleteBienes('${area.id}')">Eliminar seleccionados</button>`:''}
       <button class="btn secondary small" onclick="toggleAllBienChk(false)">Cancelar selección</button>
     </div>` : ''}
     ${bienes.length ? `<div class="table-wrap"><table><thead><tr>${IS_OWNER?'<th class="chk-col"><input type="checkbox" onchange="toggleAllBienChk(this.checked)" aria-label="Seleccionar todos"></th>':''}<th></th><th>N.º inventario</th><th>Descripción</th><th>Estado físico</th><th>Situación</th><th>A cargo de</th><th></th></tr></thead><tbody>
@@ -1464,20 +1465,9 @@ async function renderBienFicha(app, numero){
   }
   window.__currentBien = bien; window.__currentArea = area;
 }
-function imprimirEtiqueta(numero, descripcion){
-  const holder = document.getElementById('qrCanvas');
-  const img = holder.querySelector('img') || holder.querySelector('canvas');
-  const dataUrl = img ? (img.tagName==='IMG'?img.src:img.toDataURL()) : '';
-  const w = window.open('', '_blank', 'width=380,height=460');
-  if(!w) return;
-  w.document.write(`<!DOCTYPE html><html><head><title>Etiqueta ${esc(numero)}</title>
-    <style>body{font-family:sans-serif;text-align:center;padding:24px;}img{width:200px;height:200px;}
-    h3{margin:14px 0 4px;font-size:1rem;}p{margin:0;font-size:.8rem;color:#555;}
-    @media print{body{padding:0;}}</style></head>
-    <body>${dataUrl?`<img src="${dataUrl}">`:''}<h3>${esc(numero)}</h3><p>${esc(descripcion)}</p>
-    <p>Hospital Leonardo Martínez Valenzuela</p>
-    <script>window.onload=()=>{window.print();}<\/script></body></html>`);
-  w.document.close();
+function imprimirEtiqueta(numero,descripcion){
+  // Misma plantilla A4 de 2 × 2 pulgadas usada en las impresiones múltiples.
+  bnImprimirHojaQR([{numeroInventario:numero,descripcion}]);
 }
 async function openBienEditById(id){
   const snap = await DB.doc('bienes/'+id).get();
@@ -1593,7 +1583,7 @@ async function exportGeneralWord(){return downloadFromServer('/api/export?format
   render();
 })();
 </script>
-<script src="/pro.js?v=4.0-institucional-descargo"></script>
+<script src="/pro.js?v=5.3-qr-multiple-a4"></script>
 <script src="/customize.js?v=4.0"></script>
 </body>
 </html>
