@@ -198,7 +198,7 @@ async function renderAdvancedSearch(app){
     <div class="result-line pro-result-bar"><div><strong id="proCount" aria-live="polite">${d.bienes.length} bienes registrados</strong><span id="proFilterDetail"> · Mostrando todos los registros</span></div><button type="button" class="btn secondary small" onclick="resetProFilters()">Quitar filtros</button></div>
     <section class="pro-panel bn-selection-bar" aria-label="Acciones sobre bienes seleccionados">
       <div><h3>Gestión de bienes</h3><p class="pro-muted" id="proReviewCount">Ningún bien seleccionado</p></div>
-      <div class="row-actions"><button class="btn secondary small" type="button" onclick="proSelectAll(true)">Seleccionar resultados</button><button class="btn secondary small" type="button" onclick="proSelectAll(false)">Quitar selección</button>${IS_ADMIN?`<button class="btn danger-solid small" type="button" onclick="proDeleteSelected()">Eliminar seleccionados</button>`:''}<button class="btn secondary small" type="button" onclick="exportGeneralExcel()">Exportar Excel</button><button class="btn secondary small" type="button" onclick="exportGeneralWord()">Exportar Word</button></div>
+      <div class="row-actions"><button class="btn secondary small" type="button" onclick="proSelectAll(true)">Seleccionar todos</button><button class="btn secondary small" type="button" onclick="proSelectAll(false)">Quitar selección</button><button id="proPrintQRBtn" class="btn bn-qr-batch-btn small" type="button" onclick="proPrintSelectedQR()" disabled>▦ Imprimir en formato QR</button>${IS_ADMIN?`<button class="btn danger-solid small" type="button" onclick="proDeleteSelected()">Eliminar seleccionados</button>`:''}<button class="btn secondary small" type="button" onclick="exportGeneralExcel()">Exportar Excel</button><button class="btn secondary small" type="button" onclick="exportGeneralWord()">Exportar Word</button></div>
     </section>
     <div class="table-wrap pro-results-wrap"><table class="result-table"><thead><tr><th class="chk-col"><input type="checkbox" id="proAllCheck" onchange="proSelectAll(this.checked)" aria-label="Seleccionar todos los resultados filtrados"></th><th>Bien</th><th>N.º SIAFI</th><th>Lugar / área</th><th>Persona a cargo</th><th id="proDateHeader">Fecha de registro</th><th>Valor</th><th>Estado físico</th><th>Situación</th><th>Acciones</th></tr></thead><tbody id="proResults"></tbody></table></div>
   </div>`;
@@ -317,6 +317,8 @@ function proUpdateSelectionCount(){
   if(t)t.textContent=PRO_SELECTED.size?`${PRO_SELECTED.size} seleccionado(s) de ${PRO_VISIBLE.length} en el filtro actual`:'Ningún bien seleccionado';
   const c=document.getElementById('proAllCheck');
   if(c){c.checked=PRO_VISIBLE.length>0&&PRO_SELECTED.size===PRO_VISIBLE.length;c.indeterminate=PRO_SELECTED.size>0&&PRO_SELECTED.size<PRO_VISIBLE.length;}
+  const printBtn=document.getElementById('proPrintQRBtn');
+  if(printBtn){printBtn.disabled=PRO_SELECTED.size===0;printBtn.title=PRO_SELECTED.size?`Preparar ${PRO_SELECTED.size} etiquetas QR de 2 × 2 pulgadas en A4`:'Selecciona al menos un bien';}
 }
 function proSelectOne(id,checked){if(checked)PRO_SELECTED.add(id);else PRO_SELECTED.delete(id);proUpdateSelectionCount();}
 function proSelectAll(checked){PRO_SELECTED=checked?new Set(PRO_VISIBLE.map(x=>x.id)):new Set();document.querySelectorAll('#proResults input[type=checkbox]').forEach(c=>{c.checked=checked;});proUpdateSelectionCount();}
@@ -639,3 +641,101 @@ async function nexusLoadConflicts(){
     }
   };
 })();
+
+
+/* Bienes Nacionales 5.3 — Impresión múltiple de QR públicos en hojas A4.
+   Solo utiliza el endpoint QR autenticado de Cloudflare. El código generado en
+   cada etiqueta apunta a /api/public/ficha/<token> (consulta sin sesión).
+   Las plantillas NUNCA consultan datos sensibles ni alteran la base D1. */
+function proPrintSelectedQR(){
+  const selected=PRO_VISIBLE.filter(b=>PRO_SELECTED.has(b.id));
+  if(!selected.length){toast('Selecciona uno o más bienes antes de imprimir etiquetas QR.');return;}
+  bnImprimirHojaQR(selected);
+}
+async function imprimirQRAreaSeleccionados(){
+  const ids=new Set([...document.querySelectorAll('.bienChk:checked')].map(input=>input.value));
+  if(!ids.size){toast('Selecciona primero uno o más bienes del área.');return;}
+  try{
+    const bienes=(await fetchAllBienes()).filter(b=>ids.has(b.id));
+    if(bienes.length!==ids.size){toast('Algunos bienes ya no están disponibles. Actualiza la página.');return;}
+    await bnImprimirHojaQR(bienes);
+  }catch(e){toast('No se pudo preparar las etiquetas QR: '+e.message);}
+}
+function bnQRLabelHTML(item){
+  if(!item)return '<div class="etiqueta vacia" aria-label="Espacio de etiqueta sin usar"></div>';
+  const numero=esc(String(item.numeroInventario||''));
+  const descripcion=esc(String(item.descripcion||'').trim().slice(0,54));
+  return `<div class="etiqueta llena" aria-label="Etiqueta ${numero}"><div class="etiqueta-marca"><strong>BN</strong><span>BIENES NACIONALES · HLMV</span></div><img class="etiqueta-qr" alt="QR público del bien ${numero}" src="${item.qr}"><div class="etiqueta-numero">${numero}</div><div class="etiqueta-descripcion">${descripcion}</div></div>`;
+}
+function bnQRSheetsHTML(items,perPage,cols){
+  const totalPages=Math.ceil(items.length/perPage)||1;
+  let html='';
+  for(let page=0;page<totalPages;page++){
+    const chunk=items.slice(page*perPage,(page+1)*perPage);
+    while(chunk.length<perPage)chunk.push(null);
+    html+=`<section class="hoja" data-qty="${perPage}" data-page="${page+1}" style="--col:${cols}">${chunk.map(bnQRLabelHTML).join('')}</section>`;
+  }
+  return html;
+}
+function bnQREtiquetasDocumento(items){
+  // La plantilla usa milímetros, no píxeles: 50.8 mm = 2 pulgadas exactas.
+  const safeCount=items.length;
+  const max=bnQRSheetsHTML(items,20,4);
+  const normal=bnQRSheetsHTML(items,15,3);
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bienes Nacionales — ${safeCount} etiquetas QR · A4</title>
+  <style>
+   *{box-sizing:border-box}html{background:#edf2f7}body{margin:0;color:#0b2d4c;font:14px/1.4 system-ui,'Segoe UI',sans-serif}
+   .panel{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #dce5ed;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 4px 16px #19395b12}
+   .panel strong{font-size:16px}.panel small{display:block;color:#536779;margin-top:2px}.panel-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+   .panel select,.panel button{font:inherit;padding:10px 13px;border-radius:10px;border:1px solid #cbd7e3;background:#fff;color:#163553;cursor:pointer}
+   .panel button.primary{border-color:#093c69;background:#093c69;color:#fff;font-weight:700}.info{max-width:920px;margin:14px auto;padding:0 15px;color:#4b6174;font-size:13px}
+   .info b{color:#173857}.hoja{width:210mm;height:297mm;margin:18px auto;background:white;box-shadow:0 7px 28px #1b304327;display:grid;grid-template-columns:repeat(var(--col),50.8mm);grid-template-rows:repeat(5,50.8mm);justify-content:space-evenly;align-content:space-evenly;overflow:hidden}
+   .etiqueta{width:50.8mm;height:50.8mm;min-width:0;min-height:0;border:0.12mm dashed #d6dee7;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:1.1mm 2.1mm 1.0mm;overflow:hidden;text-align:center;background:white}
+   .etiqueta.vacia{background:white}.etiqueta-marca{height:3.7mm;width:100%;display:flex;align-items:center;justify-content:center;gap:2.1mm;font-size:6.5pt;white-space:nowrap;color:#13375e}
+   .etiqueta-marca strong{font-size:10pt;font-weight:900;color:#052958;letter-spacing:-.05em}.etiqueta-marca span{font-weight:700;font-size:5.6pt;letter-spacing:.01em}
+   .etiqueta-qr{width:36.3mm;height:36.3mm;object-fit:contain;display:block;flex:none;image-rendering:auto}
+   .etiqueta-numero{width:100%;height:4.3mm;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:800 9pt/1.25 system-ui,'Segoe UI',sans-serif;color:#071f3d}
+   .etiqueta-descripcion{max-width:100%;height:4mm;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:600 6pt/1.2 system-ui,'Segoe UI',sans-serif;color:#526b7c}
+   .modo-seguro{display:none}body.seguro .modo-maximo{display:none}body.seguro .modo-seguro{display:block}
+   @page{size:A4 portrait;margin:0}
+   @media print{html,body{margin:0;padding:0;background:#fff;width:210mm} .panel,.info{display:none!important} .hoja{margin:0!important;box-shadow:none!important;break-after:page;page-break-after:always} .hoja:last-child{break-after:auto;page-break-after:auto} .etiqueta{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+  </style></head><body class="maximo">
+  <header class="panel"><div><strong>Bienes Nacionales · Impresión múltiple de QR</strong><small>${safeCount} ${safeCount===1?'bien seleccionado':'bienes seleccionados'} · Etiquetas exactas de 2 × 2 pulgadas · Papel A4</small></div>
+  <div class="panel-controls"><label for="distribucion">Distribución:</label><select id="distribucion" onchange="document.body.className=this.value"><option value="maximo">20 por hoja (4 × 5)</option><option value="seguro">15 por hoja (3 × 5, márgenes amplios)</option></select><button class="primary" onclick="window.print()">Imprimir etiquetas QR</button><button onclick="window.close()">Cerrar</button></div></header>
+  <p class="info"><b>A4, vertical, escala 100 %:</b> cada etiqueta mide exactamente 50.8 × 50.8 mm. Para <b>20 por hoja</b> quedan solo 3.4 mm a cada lado; si tu impresora recorta los bordes, elige <b>15 por hoja</b>. Los espacios vacíos permanecen libres para otra impresión. Los QR abren la ficha pública sin iniciar sesión.</p>
+  <main class="modo-maximo">${max}</main><main class="modo-seguro">${normal}</main>
+  </body></html>`;
+}
+async function bnImprimirHojaQR(bienes){
+  const all=(Array.isArray(bienes)?bienes:[]).filter(b=>String(b.numeroInventario||'').trim());
+  if(!all.length){toast('No hay bienes con número de inventario para imprimir.');return;}
+  if(all.length>300){toast('Seleccionaste '+all.length+' bienes. Imprime en lotes de hasta 300 etiquetas para evitar sobrecargar el navegador.');return;}
+  // Abrir inmediatamente durante el clic (antes de await) evita bloqueo de ventanas emergentes.
+  const win=window.open('','_blank','width=1080,height=880');
+  if(!win){toast('Permite ventanas emergentes para abrir la vista de impresión de etiquetas.');return;}
+  win.document.open();win.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Preparando etiquetas QR…</title></head><body style="font:16px system-ui;background:#f8fbfe;color:#133b60;text-align:center;margin:70px 16px"><h2>Preparando etiquetas QR de Bienes Nacionales…</h2><p id="progress">0 de '+all.length+' códigos generados</p><p>La vista previa estará lista cuando termine la generación.</p></body></html>');win.document.close();
+  try{
+    const items=[];
+    for(let start=0;start<all.length;start+=4){
+      const group=all.slice(start,start+4);
+      const qrCodes=await Promise.all(group.map(async b=>{
+        const req='/api/qr?'+new URLSearchParams({numero:String(b.numeroInventario)});
+        const response=await fetch(req,{credentials:'same-origin',cache:'no-store'});
+        if(!response.ok){const m=await response.text().catch(()=>String(response.status));throw Error('No se pudo generar el QR del bien '+b.numeroInventario+' ('+response.status+'). '+m.slice(0,90));}
+        const svg=await response.text();
+        if(!/<svg[\s>]/i.test(svg))throw Error('El servidor devolvió un código QR inválido para '+b.numeroInventario);
+        return {numeroInventario:String(b.numeroInventario),descripcion:String(b.descripcion||''),qr:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)};
+      }));
+      items.push(...qrCodes);
+      const progress=win.document.getElementById('progress');if(progress)progress.textContent=items.length+' de '+all.length+' códigos generados';
+      if(win.closed)return;
+    }
+    if(win.closed)return;
+    win.document.open();win.document.write(bnQREtiquetasDocumento(items));win.document.close();win.focus();
+  }catch(e){
+    console.error('Impresión múltiple QR:',e);
+    if(!win.closed){const p=win.document.getElementById('progress');if(p)p.textContent='No se pudo completar la hoja: '+e.message;}
+    toast('No se pudieron preparar las etiquetas QR: '+e.message);
+  }
+}

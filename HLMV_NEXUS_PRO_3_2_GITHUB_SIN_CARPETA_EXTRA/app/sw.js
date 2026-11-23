@@ -1,5 +1,5 @@
 // HLMV PWA: SOLO interfaz. Nunca almacenar respuestas privadas en caché.
-const SHELL='hlmv-bienes-nacionales-compacto-v51-opcion4';
+const SHELL='hlmv-bienes-nacionales-qr-a4-v53';
 const ASSETS=['/','/manifest.webmanifest','/icons/bn-icon-v42-32.png','/icons/bn-icon-v42-192.png','/icons/bn-icon-v42-512.png','/pro.css','/pro.js','/customize.css','/customize.js','/minimal.css','/institucional.css','/compacto.css','/icons/bn-logo.png','/icons/gobierno-salud-v42.png'];
 self.addEventListener('install', event=>{
  // Una imagen institucional ausente no debe bloquear la actualización del panel.
