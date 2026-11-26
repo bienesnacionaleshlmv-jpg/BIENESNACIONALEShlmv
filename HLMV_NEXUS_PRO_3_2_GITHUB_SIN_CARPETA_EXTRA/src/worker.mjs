@@ -353,54 +353,162 @@ function exportOffice(r,format){
 function normalize(s){return fmt(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 function decodeXml(s){return s.replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(+n)).replace(/&(?:amp|lt|gt|quot|apos);/g,m=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'"}[m]));}
 const unxml=s=>decodeXml(s.replace(/<[^>]*>/g,''));
+
+// Lector XLSX/CSV institucional: compatible con variaciones de Excel y encabezados.
+// No modifica registros hasta confirmar la importación desde la vista previa.
+function readCsv(bytes){
+ if(bytes.byteLength>12*1024*1024)fail('Archivo demasiado grande (máximo 12 MB).',413);
+ let content=new TextDecoder('utf-8').decode(bytes);
+ if(content.includes('\uFFFD'))content=new TextDecoder('windows-1252').decode(bytes);
+ content=content.replace(/^\uFEFF/,'');
+ const first=content.split(/\r?\n/,2)[0]||'';
+ const delimiter=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';
+ const records=[];let row=[],value='',quoted=false;
+ for(let i=0;i<content.length;i++){
+  const ch=content[i];
+  if(ch==='"'){
+   if(quoted&&content[i+1]==='"'){value+='"';i++;}
+   else quoted=!quoted;
+  }else if(!quoted&&ch===delimiter){row.push(value);value='';}
+  else if(!quoted&&(ch==='\r'||ch==='\n')){
+   row.push(value);value='';
+   if(row.some(v=>v.trim()))records.push(row);
+   row=[];if(ch==='\r'&&content[i+1]==='\n')i++;
+  }else value+=ch;
+ }
+ if(quoted)fail('El archivo CSV tiene comillas sin cerrar.');
+ row.push(value);if(row.some(v=>v.trim()))records.push(row);
+ if(records.length>30000)fail('El archivo tiene demasiadas filas.',413);
+ return [{name:'Archivo CSV',rows:records.map((cells,i)=>({
+  n:i+1,cols:Object.fromEntries(cells.slice(0,181).map((v,k)=>[k,fmt(v)]))
+ }))}];
+}
+function xmlAttributes(s){
+ const result={};
+ for(const m of s.matchAll(/([A-Za-z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)){
+  result[m[1]]=decodeXml(m[2]===undefined?m[3]:m[2]);
+ }
+ return result;
+}
 function readXlsx(bytes){
  if(bytes.byteLength>12*1024*1024)fail('Excel demasiado grande (máximo 12 MB).',413);
- let z;try{z=unzipSync(bytes);}catch{fail('Archivo Excel dañado.');}
- const keys=Object.keys(z),size=keys.reduce((a,k)=>a+z[k].length,0);if(keys.length>3000||size>90*1024*1024)fail('Excel demasiado grande o comprimido de forma sospechosa.');
- const read=k=>z[k]?strFromU8(z[k]):'';if(!read('xl/workbook.xml'))fail('No se encontraron las hojas del Excel.');
- const shared=Array.from(read('xl/sharedStrings.xml').matchAll(/<si(?:\s[^>]*)?>([\s\S]*?)<\/si>/g),m=>unxml(m[1]));
- const book=read('xl/workbook.xml'),rel=read('xl/_rels/workbook.xml.rels');const links={};for(const m of rel.matchAll(/<Relationship\b([^>]*)\/>/g)){const id=(m[1].match(/\bId="([^"]+)"/)||[])[1],target=(m[1].match(/\bTarget="([^"]+)"/)||[])[1];if(id&&target)links[id]=target;}
+ let z;try{z=unzipSync(bytes);}catch{fail('No se pudo leer el XLSX. Abre el archivo en Excel y guárdalo de nuevo como .xlsx.');}
+ const keys=Object.keys(z),size=keys.reduce((a,k)=>a+z[k].length,0);
+ if(keys.length>3000||size>90*1024*1024)fail('Excel demasiado grande o comprimido de forma sospechosa.',413);
+ const read=k=>z[k]?strFromU8(z[k]):'';
+ const book=read('xl/workbook.xml'),rels=read('xl/_rels/workbook.xml.rels');
+ if(!book)fail('El archivo no contiene un libro Excel XLSX válido.');
+ const shared=Array.from(read('xl/sharedStrings.xml').matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g),m=>unxml(m[1]));
+ const links={};
+ for(const m of rels.matchAll(/<Relationship\b([^>]*)\/?>/g)){
+  const a=xmlAttributes(m[1]);if(a.Id&&a.Target)links[a.Id]=a.Target;
+ }
  const sheets=[];
- for(const sh of book.matchAll(/<sheet\s+[^>]*name="([^"]+)"[^>]*(?:r:id|id)="([^"]+)"[^>]*\/?\s*>/g)){
-  let file=links[sh[2]]||'';file=file.replace(/^\//,'');if(!file.startsWith('xl/'))file='xl/'+file;if(!file.startsWith('xl/worksheets/'))continue;
-  const xml=read(file);if(!xml)continue;let rows=[];
-  for(const row of xml.matchAll(/<row\b[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)){
-   const i=+row[1];if(i>30000)fail('La hoja es demasiado larga.');const cols={};
-   for(const c of row[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
-    const rf=(c[1].match(/\br="([A-Z]+)\d+"/)||[])[1];if(!rf)continue;let idx=0;for(const x of rf)idx=idx*26+x.charCodeAt(0)-64;idx--;if(idx>180)continue;
-    const type=(c[1].match(/\bt="([^"]+)"/)||[])[1];const payload=c[2]||'';let v=(payload.match(/<v>([\s\S]*?)<\/v>/)||[])[1]||'';
-    if(type==='s')v=shared[+v]||'';else if(type==='inlineStr')v=unxml(payload);
+ for(const [sheetIndex,match] of [...book.matchAll(/<sheet\b([^>]*)\/?>/g)].entries()){
+  const a=xmlAttributes(match[1]),name=a.name||'Hoja '+(sheetIndex+1);
+  let target=links[a['r:id']||a.id]||'worksheets/sheet'+(sheetIndex+1)+'.xml';
+  target=target.replace(/^\//,'');
+  const file=target.startsWith('xl/')?target:'xl/'+target;
+  if(!/^xl\/worksheets\/[^/]+\.xml$/i.test(file))continue;
+  const xml=read(file);if(!xml)continue;
+  const rows=[];
+  for(const rm of xml.matchAll(/<row\b([^>]*?)>([\s\S]*?)<\/row>/g)){
+   const attr=xmlAttributes(rm[1]),number=+(attr.r||rows.length+1);
+   if(number>30000)fail('La hoja es demasiado larga.',413);
+   const cols={};
+   for(const cm of rm[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+    const cattr=xmlAttributes(cm[1]),ref=(cattr.r||'').match(/^([A-Z]+)\d+$/i);
+    if(!ref)continue;
+    let idx=0;for(const ch of ref[1].toUpperCase())idx=idx*26+ch.charCodeAt(0)-64;
+    idx--;if(idx>180)continue;
+    const payload=cm[2]||'';
+    let v=(payload.match(/<v>([\s\S]*?)<\/v>/)||[])[1]||'';
+    if(cattr.t==='s')v=shared[Number(v)]||'';
+    else if(cattr.t==='inlineStr')v=unxml(payload);
     cols[idx]=fmt(decodeXml(v));
    }
-   rows.push({n:i,cols});
+   rows.push({n:number,cols});
   }
-  sheets.push({name:decodeXml(sh[1]),rows});
+  sheets.push({name,rows});
  }
- if(!sheets.length)fail('No se encontraron hojas compatibles.');return sheets;
+ if(!sheets.length)fail('No se encontraron hojas compatibles en el XLSX. Prueba guardar una copia como Libro de Excel (.xlsx).');
+ return sheets;
 }
-const pick=(row,opts)=>Number(Object.entries(row).find(([k,v])=>opts.some(o=>normalize(v).includes(o)))?.[0]??-1);
-function parseExcel(bytes){
- const sheets=readXlsx(bytes);const bienes=[],ignored=[];
- for(const sh of sheets){let hdr=null;for(const r of sh.rows.slice(0,45)){const ci=pick(r.cols,['inventario','siafi','codigo del bien']),cd=pick(r.cols,['descripcion','nombre del bien','detalle del bien']);if(ci>=0&&cd>=0&&ci!==cd){hdr={row:r.n,col:r.cols,ci,cd};break;}}
- if(!hdr){ignored.push(sh.name);continue;}
- const getCol=options=>pick(hdr.col,options),fields={marca:getCol(['marca']),modelo:getCol(['modelo']),numeroSerie:getCol(['serie']),color:getCol(['color']),estadoOriginal:getCol(['estado']),numeroFicha:getCol(['ficha']),precio:getCol(['precio','valor','costo'])};
- let area='',jefe='';for(const r of sh.rows.slice(0,15)){for(const [k,v] of Object.entries(r.cols)){const n=normalize(v),i=+k;if(n.includes('departamento/oficina')||n.includes('institucion:'))area=area||fmt(r.cols[i+2]||r.cols[i+1]);if(n.includes('nombre de responsable'))jefe=jefe||fmt(r.cols[i+2]||r.cols[i+1]);}}
- if(!area){const line=sh.rows.find(r=>r.n===8)||sh.rows.find(r=>r.n===7);area=fmt(line?.cols[2])||sh.name;}
- let count=0;
- for(const r of sh.rows){if(r.n<=hdr.row)continue;const val=k=>k>=0?fmt(r.cols[k]):'';const desc=val(hdr.cd),number=val(hdr.ci);if(!desc||normalize(desc)==='descripcion del bien')continue;
- if(hdr.ci===1&&!/^\d+(?:\.0+)?$/.test(val(0)))continue;if(!number&&hdr.ci!==1)continue;
- const inventory=number.replace(/\.0+$/,'');const valid=/^\d[\dA-Za-z._/-]*$/.test(inventory)&&!/^(0|000)$/.test(inventory);
- const id=valid?inventory:'PEND-'+digits(r.n).padStart(7,'0')+'-'+normalize(area).replace(/[^a-z]/g,'').slice(0,5).toUpperCase();
- bienes.push({area,responsable:jefe,numeroInventario:id,numeroOriginal:number,pendienteNumero:!valid,descripcion:desc,...Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,val(v)])),estadoBueno:['bueno','buen estado','excelente'].includes(normalize(val(fields.estadoOriginal))),hoja:sh.name,fila:r.n});count++;
+const headerNorm=s=>normalize(s).replace(/[º°#.:/_-]+/g,' ').replace(/\s+/g,' ').trim();
+const pick=(row,opts)=>{
+ const entries=Object.entries(row);
+ for(const term of opts){
+  const hit=entries.find(([k,v])=>headerNorm(v)===headerNorm(term));
+  if(hit)return Number(hit[0]);
  }
- if(!count)ignored.push(sh.name);
+ for(const term of opts){
+  const q=headerNorm(term);
+  const hit=entries.find(([k,v])=>headerNorm(v).includes(q));
+  if(hit)return Number(hit[0]);
  }
- if(!bienes.length)fail('No se encontraron bienes completos en el Excel.');if(bienes.length>500)fail('Máximo 500 bienes por Excel en la versión gratuita; divide la hoja en varios archivos.');
+ return -1;
+};
+function parseExcel(bytes,filename){
+ const sheets=filename.toLowerCase().endsWith('.csv')?readCsv(bytes):readXlsx(bytes);
+ const bienes=[],ignored=[];
+ for(const sh of sheets){
+  let hdr=null;
+  for(const r of sh.rows.slice(0,80)){
+   const ci=pick(r.cols,['numero de inventario','no inventario','n inventario','inventario','numero siafi','siafi','codigo del bien','codigo de inventario']);
+   const cd=pick(r.cols,['descripcion del bien','descripcion','nombre del bien','detalle del bien','nombre del objeto','articulo','objeto']);
+   if(ci>=0&&cd>=0&&ci!==cd){hdr={row:r.n,col:r.cols,ci,cd};break;}
+  }
+  if(!hdr){ignored.push(sh.name);continue;}
+  const col=opts=>pick(hdr.col,opts);
+  const fields={
+   marca:col(['marca']),modelo:col(['modelo']),numeroSerie:col(['numero de serie','serie']),
+   color:col(['color']),estadoOriginal:col(['estado del bien','estado fisico','estado']),
+   numeroFicha:col(['numero de ficha','ficha']),precio:col(['precio','valor adquisicion','valor','costo'])
+  };
+  const areaCol=col(['area','ubicacion','servicio','departamento','oficina','unidad']);
+  const jefeCol=col(['responsable','encargado','custodio','asignado a','persona a cargo']);
+  let area='',jefe='';
+  for(const r of sh.rows.slice(0,20)){
+   for(const [k,v] of Object.entries(r.cols)){
+    const n=normalize(v),i=+k;
+    if(n.includes('departamento/oficina')||n.includes('institucion:'))area=area||fmt(r.cols[i+2]||r.cols[i+1]);
+    if(n.includes('nombre de responsable'))jefe=jefe||fmt(r.cols[i+2]||r.cols[i+1]);
+   }
+  }
+  if(!area)area=sh.name==='Archivo CSV'?'Área por verificar':sh.name;
+  let count=0;
+  for(const r of sh.rows){
+   if(r.n<=hdr.row)continue;
+   const val=k=>k>=0?fmt(r.cols[k]):'';
+   const desc=val(hdr.cd),number=val(hdr.ci);
+   if(!desc||headerNorm(desc)==='descripcion del bien'||headerNorm(desc)==='descripcion')continue;
+   if(!number&&!desc)continue;
+   const rowArea=val(areaCol)||area;
+   const rowJefe=val(jefeCol)||jefe;
+   const inventory=number.replace(/\.0+$/,'').trim();
+   const valid=/^\d[\dA-Za-z._/-]*$/.test(inventory)&&!/^(0|000)$/.test(inventory);
+   const suffix=normalize(rowArea+'-'+sh.name).replace(/[^a-z0-9]/g,'').slice(0,12).toUpperCase();
+   const id=valid?inventory:'PEND-'+digits(r.n).padStart(7,'0')+'-'+suffix;
+   bienes.push({area:rowArea,responsable:rowJefe,numeroInventario:id,numeroOriginal:number,
+    pendienteNumero:!valid,descripcion:desc,
+    ...Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,val(v)])),
+    estadoBueno:['bueno','buen estado','excelente'].includes(normalize(val(fields.estadoOriginal))),
+    hoja:sh.name,fila:r.n});
+   count++;
+  }
+  if(!count)ignored.push(sh.name);
+ }
+ if(!bienes.length)fail('No se reconocieron bienes. Verifica que haya columnas de Inventario y Descripción, y filas con datos.');
+ if(bienes.length>500)fail('Máximo 500 bienes por archivo; divide la hoja en varios archivos.');
  return {bienes,hojasIgnoradas:ignored};
 }
+
 async function importExcel(req,db,user,preview){
- role(user,'administrador','inspector');if(!fmt(req.headers.get('X-Filename')).toLowerCase().endsWith('.xlsx'))fail('Selecciona un .xlsx.');
- const raw=new Uint8Array(await req.arrayBuffer());const parsed=parseExcel(raw);const current=await listDocs(db,'bienes');const used=new Set(current.map(x=>normalize(x.numeroInventario)));
+ role(user,'administrador','inspector');
+ let filename=fmt(req.headers.get('X-Filename'));
+ try{filename=decodeURIComponent(filename);}catch{}
+ if(!/\.(xlsx|csv)$/i.test(filename))fail('Selecciona un .xlsx o .csv. Los archivos .xls deben guardarse como .xlsx.');
+ const raw=new Uint8Array(await req.arrayBuffer());const parsed=parseExcel(raw,filename);const current=await listDocs(db,'bienes');const used=new Set(current.map(x=>normalize(x.numeroInventario)));
  let added=0,dup=0;const records=[];
  for(const b of parsed.bienes){if(used.has(normalize(b.numeroInventario))){dup++;continue;}used.add(normalize(b.numeroInventario));records.push(b);added++;}
  if(preview)return {
