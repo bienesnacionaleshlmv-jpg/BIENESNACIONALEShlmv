@@ -483,7 +483,7 @@ async function nexusPDFCommit(){
 let NEXUS_EXCEL_FILE=null;
 let NEXUS_EXCEL_PLAN=null;
 async function nexusUploadExcel(endpoint,file){
-  const response=await fetch(endpoint,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','X-Filename':encodeURIComponent(file.name)},body:file});
+  const response=await fetch(endpoint,{method:'POST',credentials:'same-origin',headers:{'Content-Type':file.name.toLowerCase().endsWith('.csv')?'text/csv;charset=utf-8':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','X-Filename':encodeURIComponent(file.name)},body:file});
   const data=await response.json().catch(()=>({error:'Respuesta del servidor no válida.'}));
   if(!response.ok)throw Error(data.error||`Error HTTP ${response.status}`);
   return data;
@@ -493,9 +493,9 @@ async function renderImportExcel(app){
   app.innerHTML=`<div class="wrap inv-wrap pro-search-page">
     <div class="pro-pagehead"><div><div class="pro-kicker">CARGA MASIVA • BIENES NACIONALES</div><h1>＋ Agregar por Excel</h1><p class="pro-subtitle">Carga prefichas del hospital u hojas Excel compatibles. El sistema reconoce números SIAFI, descripción, marca, modelo, serie, color, área y responsable.</p></div><div class="pro-pageactions"><button class="btn secondary" onclick="downloadBackup()">↓ Respaldo</button><button class="btn secondary" onclick="location.hash='#/buscar'">Explorar inventario →</button></div></div>
     <div class="pro-columns" style="align-items:start">
-      <section class="pro-panel"><div class="pro-panel-header"><div><h3>Selecciona el archivo</h3><p>Formato .xlsx · hasta 12 MB</p></div></div>
-        <label for="nexusExcelFile" class="nexus-upload-zone"><span style="font-size:36px;color:#9bf00b">⇧</span><strong>Seleccionar Excel desde la computadora</strong><small>Conserva la estructura original, incluso con varias hojas y encabezados institucionales.</small></label>
-        <input id="nexusExcelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="width:100%;margin-top:10px" onchange="nexusExcelSelected(this)">
+      <section class="pro-panel"><div class="pro-panel-header"><div><h3>Selecciona el archivo</h3><p>Formatos .xlsx y .csv · hasta 12 MB</p></div></div>
+        <label for="nexusExcelFile" class="nexus-upload-zone"><span style="font-size:36px;color:#9bf00b">⇧</span><strong>Seleccionar Excel desde la computadora</strong><small>Reconoce encabezados habituales del hospital. En Excel acepta varias hojas; también puedes utilizar archivos CSV.</small></label>
+        <input id="nexusExcelFile" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" style="width:100%;margin-top:10px" onchange="nexusExcelSelected(this)">
         <p class="pro-muted" style="margin:14px 0">No se modifica ningún registro durante la vista previa.</p>
         <button id="nexusExcelPreviewButton" class="btn" onclick="nexusExcelPreview()" disabled>Analizar el Excel</button>
       </section>
@@ -517,7 +517,7 @@ function nexusExcelSelected(el){
 async function nexusExcelPreview(){
   const file=NEXUS_EXCEL_FILE;
   if(!file)return toast('Selecciona un archivo Excel.');
-  if(!file.name.toLowerCase().endsWith('.xlsx')||file.size>12*1024*1024){toast('Selecciona un .xlsx de máximo 12 MB.');return;}
+  if(!/\.(xlsx|csv)$/i.test(file.name)||file.size>12*1024*1024){toast('Selecciona un archivo .xlsx o .csv de máximo 12 MB. Para .xls usa Guardar como .xlsx.');return;}
   const container=document.getElementById('nexusExcelResult');
   container.innerHTML='<div class="pro-panel"><div class="pro-empty">Analizando hojas y comprobando números de inventario…</div></div>';
   try{
